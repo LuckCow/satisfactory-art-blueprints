@@ -77,6 +77,7 @@ Thumbs.db
 
 # Project specific
 local
-*.json
+*.sbp
+*.sbpcfg
 !CustomSwatchColorBeams.json
 !AIAnchorExample.json
