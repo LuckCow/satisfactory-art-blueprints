@@ -28,6 +28,10 @@ pip install -r requirements.txt
 ### Convert an Image
 
 ```bash
+# full exmaple
+python .\blueprint_gen.py examples\Inserter.webp -s 32x32 --condensed --cr-multiplier 3 --cr-z-offset 0.1
+npm run encode .\Inserter.json
+
 # Simple conversion (full resolution)
 python blueprint_gen.py image.png
 
@@ -96,19 +100,19 @@ python blueprint_gen.py <image> [options]
 
 #### Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `-s, --size SIZE` | Target resolution (WxH, "W H", or %) | Full resolution |
-| `-o, --output FILE` | Output JSON file | `<image>.json` |
-| `-n, --name NAME` | Blueprint name | Image filename |
-| `--spacing FLOAT` | Beam spacing in cm | 100.0 |
-| `--base-z FLOAT` | Base Z height in cm | 1200.0 |
-| `--max-4k` | Enforce 4K resolution limit | Off |
-| `--filter-bg MODE` | Background filter (auto/corners/brightness) | None |
-| `--bg-tolerance FLOAT` | Background color tolerance (0-255) | 30.0 |
-| `--condensed` | Enable condensed rendering with z-clipping | Off |
-| `--cr-multiplier N` | NxN grid of beams per pixel (condensed mode) | 2 |
-| `--cr-z-offset FLOAT` | Z-offset between layers in cm (condensed mode) | 0.001 |
+| Option                 | Description                                    | Default         |
+| ---------------------- | ---------------------------------------------- | --------------- |
+| `-s, --size SIZE`      | Target resolution (WxH, "W H", or %)           | Full resolution |
+| `-o, --output FILE`    | Output JSON file                               | `<image>.json`  |
+| `-n, --name NAME`      | Blueprint name                                 | Image filename  |
+| `--spacing FLOAT`      | Beam spacing in cm                             | 100.0           |
+| `--base-z FLOAT`       | Base Z height in cm                            | 1200.0          |
+| `--max-4k`             | Enforce 4K resolution limit                    | Off             |
+| `--filter-bg MODE`     | Background filter (auto/corners/brightness)    | None            |
+| `--bg-tolerance FLOAT` | Background color tolerance (0-255)             | 30.0            |
+| `--condensed`          | Enable condensed rendering with z-clipping     | Off             |
+| `--cr-multiplier N`    | NxN grid of beams per pixel (condensed mode)   | 2               |
+| `--cr-z-offset FLOAT`  | Z-offset between layers in cm (condensed mode) | 0.001           |
 
 #### Resolution Formats
 
@@ -159,14 +163,14 @@ python voxelize.py <model> [options]
 
 #### Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `-s, --voxel-size FLOAT` | Voxel size in cm | 100.0 |
-| `-o, --output FILE` | Output JSON file | `<model>.json` |
-| `-n, --name NAME` | Blueprint name | Model filename |
-| `--max-size FLOAT` | Max model dimension in cm | 10000.0 (100m) |
-| `--color R G B` | Default RGB color (0-1 range) | None |
-| `--no-vertex-colors` | Ignore vertex colors | Off |
+| Option                   | Description                   | Default        |
+| ------------------------ | ----------------------------- | -------------- |
+| `-s, --voxel-size FLOAT` | Voxel size in cm              | 100.0          |
+| `-o, --output FILE`      | Output JSON file              | `<model>.json` |
+| `-n, --name NAME`        | Blueprint name                | Model filename |
+| `--max-size FLOAT`       | Max model dimension in cm     | 10000.0 (100m) |
+| `--color R G B`          | Default RGB color (0-1 range) | None           |
+| `--no-vertex-colors`     | Ignore vertex colors          | Off            |
 
 #### Supported Formats
 
@@ -272,21 +276,21 @@ blueprint.save("custom.json")
 
 ### Image Conversion
 
-| Use Case | Recommended Size | Beams | File Size |
-|----------|------------------|-------|-----------|
-| Icons/Sprites | 16×16 to 32×32 | 256-1K | 0.5-2 MB |
-| Small Art | 64×64 to 128×128 | 4K-16K | 8-33 MB |
-| Medium Art | 256×256 to 512×512 | 65K-262K | 133-535 MB |
-| Large Scenes | 1024×1024 to 1920×1080 | 1M-2M | 2-4 GB |
-| Maximum | 3840×2160 (4K) | 8.3M | ~17 GB |
+| Use Case      | Recommended Size       | Beams    | File Size  |
+| ------------- | ---------------------- | -------- | ---------- |
+| Icons/Sprites | 16×16 to 32×32         | 256-1K   | 0.5-2 MB   |
+| Small Art     | 64×64 to 128×128       | 4K-16K   | 8-33 MB    |
+| Medium Art    | 256×256 to 512×512     | 65K-262K | 133-535 MB |
+| Large Scenes  | 1024×1024 to 1920×1080 | 1M-2M    | 2-4 GB     |
+| Maximum       | 3840×2160 (4K)         | 8.3M     | ~17 GB     |
 
 ### 3D Model Voxelization
 
-| Voxel Size | Detail Level | Use Case |
-|------------|--------------|----------|
-| 50cm | High | Small detailed models |
-| 100cm (default) | Medium | General purpose |
-| 200cm | Low | Large structures, testing |
+| Voxel Size      | Detail Level | Use Case                  |
+| --------------- | ------------ | ------------------------- |
+| 50cm            | High         | Small detailed models     |
+| 100cm (default) | Medium       | General purpose           |
+| 200cm           | Low          | Large structures, testing |
 
 ## Color System
 
@@ -335,13 +339,13 @@ python blueprint_gen.py image.png -s 64x64 --condensed --cr-z-offset 0.01
 
 ### Detail Comparison
 
-| Configuration | Beams per Pixel | Total Beams (64×64) | File Size | Detail Multiplier |
-|--------------|-----------------|---------------------|-----------|-------------------|
-| Standard | 1 | 4,096 | ~17 MB | 1× |
-| `--condensed` (2×2) | 4 | 16,384 | ~67 MB | 4× |
-| `--condensed --cr-multiplier 3` | 9 | 36,864 | ~150 MB | 9× |
-| `--condensed --cr-multiplier 4` | 16 | 65,536 | ~267 MB | 16× |
-| `--condensed --cr-multiplier 5` | 25 | 102,400 | ~417 MB | 25× |
+| Configuration                   | Beams per Pixel | Total Beams (64×64) | File Size | Detail Multiplier |
+| ------------------------------- | --------------- | ------------------- | --------- | ----------------- |
+| Standard                        | 1               | 4,096               | ~17 MB    | 1×                |
+| `--condensed` (2×2)             | 4               | 16,384              | ~67 MB    | 4×                |
+| `--condensed --cr-multiplier 3` | 9               | 36,864              | ~150 MB   | 9×                |
+| `--condensed --cr-multiplier 4` | 16              | 65,536              | ~267 MB   | 16×               |
+| `--condensed --cr-multiplier 5` | 25              | 102,400             | ~417 MB   | 25×               |
 
 ### Parameters
 
@@ -356,12 +360,14 @@ python blueprint_gen.py image.png -s 64x64 --condensed --cr-z-offset 0.01
 ### When to Use
 
 **Ideal for:**
+
 - High-detail artwork with fine features
 - Small to medium resolution images (64×64 to 256×256)
 - Logos, portraits, and detailed icons
 - Cases where you want smoothness without upscaling the image
 
 **Consider standard rendering for:**
+
 - Very large images (>512×512) - file sizes become very large
 - Simple pixel art that doesn't benefit from sub-pixel detail
 - Testing and iteration (faster generation)
@@ -371,11 +377,13 @@ python blueprint_gen.py image.png -s 64x64 --condensed --cr-z-offset 0.01
 ### Architecture
 
 - **Blueprint Core**: Shared classes for all blueprint operations
+
   - ObjectType, Rotation, Vector3, Quaternion
   - BlueprintObject and Blueprint classes
   - Layer support for multi-dimensional art
 
 - **Image Processor**: Specialized for 2D image conversion
+
   - PIL/Pillow integration
   - Background filtering algorithms
   - Color space conversion
@@ -388,6 +396,7 @@ python blueprint_gen.py image.png -s 64x64 --condensed --cr-z-offset 0.01
 ### Blueprint Format
 
 Output files are JSON blueprints compatible with:
+
 - [Satisfactory Blueprint Designer](https://github.com/Goz3rr/SatisfactorySaveEditor)
 - In-game blueprint system (via save file import)
 
@@ -417,6 +426,7 @@ See `requirements.txt` for full dependency list.
 ## Contributing
 
 Contributions welcome! This project follows the DRY (Don't Repeat Yourself) principle with:
+
 - Shared core modules in `lib/`
 - Focused CLI wrappers
 - Type-safe enums and dataclasses
