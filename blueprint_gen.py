@@ -383,11 +383,13 @@ class ImageToBlueprint:
     """Convert images to painted beam pixel art"""
 
     def __init__(self, beam_spacing: float = 100.0, condensed_rendering: bool = False,
-                 cr_multiplier: int = 2, cr_depth_offset: float = 0.001):
+                 cr_multiplier: int = 2, cr_depth_offset: float = 0.001,
+                 cr_valley_offset: float = 0.0005):
         self.beam_spacing = beam_spacing
         self.condensed_rendering = condensed_rendering
         self.cr_multiplier = cr_multiplier  # Number of sub-beams per pixel (NxN grid)
         self.cr_depth_offset = cr_depth_offset  # Depth offset increment per layer
+        self.cr_valley_offset = cr_valley_offset  # Valley-shaped offset per distance from center
 
     def rgb_to_linear(self, r: int, g: int, b: int) -> Tuple[float, float, float]:
         """
@@ -627,8 +629,18 @@ class ImageToBlueprint:
 
                 # Calculate Y-depth based on distance from edge (for condensed rendering depth layering)
                 if self.condensed_rendering:
+                    # Base layer offset: edge-distance-based
                     edge_dist = min(x, width - 1 - x, y, height - 1 - y)
-                    y_depth = edge_dist * self.cr_depth_offset
+                    base_offset = edge_dist * self.cr_depth_offset
+
+                    # Valley offset: distance from center (creates valley within rows/columns)
+                    center_x = (width - 1) / 2.0
+                    center_y = (height - 1) / 2.0
+                    valley_dist = abs(x - center_x) + abs(y - center_y)
+                    valley_offset = valley_dist * self.cr_valley_offset
+
+                    # Combine both offsets
+                    y_depth = base_offset + valley_offset
                     base_pos_y = base_y - y_depth  # Subtract to come closer to viewer
                 else:
                     base_pos_y = base_y  # Constant Y (depth into the wall)
@@ -724,11 +736,13 @@ Examples:
   %(prog)s image.png --condensed            # Enable condensed rendering (2x2 beams per pixel)
   %(prog)s image.png --condensed --cr-multiplier 3  # 3x3 beams per pixel (9x detail)
   %(prog)s image.png --condensed --cr-depth-offset 0.01 # Larger depth-offset for experimentation
+  %(prog)s image.png --condensed --cr-valley-offset 0.001 # Larger valley-offset for more separation
 
 Condensed rendering:
   --condensed:           Enable condensed rendering mode with depth-clipping
   --cr-multiplier N:     Number of beams per pixel axis (NxN grid, default: 2)
   --cr-depth-offset:     Depth offset between beam layers in cm (default: 0.001)
+  --cr-valley-offset:    Valley-shaped offset per distance from center (default: 0.0005)
 
   Condensed rendering packs multiple beams in the same pixel space using tiny
   depth offsets to clip them together. Outer corners are at base depth, inner
@@ -777,6 +791,8 @@ Resolution limits:
                         help='Condensed rendering: NxN grid of sub-beams per pixel (default: 2, i.e., 2x2=4 beams per pixel)')
     parser.add_argument('--cr-depth-offset', type=float, default=0.001, metavar='OFFSET',
                         help='Condensed rendering: Depth offset increment between layers in cm (default: 0.001, applies to Y axis for vertical layout)')
+    parser.add_argument('--cr-valley-offset', type=float, default=0.0005, metavar='OFFSET',
+                        help='Condensed rendering: Valley-shaped offset per distance from center (default: 0.0005, prevents adjacent beams at same depth)')
 
     args = parser.parse_args()
 
@@ -854,12 +870,13 @@ Resolution limits:
     # Convert image to blueprint
     print(f"\n🔧 Converting image to painted beam blueprint...")
     if args.condensed:
-        print(f"   Condensed rendering enabled: {args.cr_multiplier}x{args.cr_multiplier} beams per pixel (depth-offset: {args.cr_depth_offset} cm)")
+        print(f"   Condensed rendering enabled: {args.cr_multiplier}x{args.cr_multiplier} beams per pixel (depth-offset: {args.cr_depth_offset} cm, valley-offset: {args.cr_valley_offset} cm)")
     converter = ImageToBlueprint(
         beam_spacing=args.spacing,
         condensed_rendering=args.condensed,
         cr_multiplier=args.cr_multiplier,
-        cr_depth_offset=args.cr_depth_offset
+        cr_depth_offset=args.cr_depth_offset,
+        cr_valley_offset=args.cr_valley_offset
     )
 
     # Determine rotation based on horizontal flag
