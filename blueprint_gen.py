@@ -5,7 +5,12 @@ Convert images to Satisfactory blueprints using painted beams as pixels
 """
 
 import argparse
+import json
+from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+import numpy as np
 from PIL import Image
 
 
@@ -819,7 +824,6 @@ Resolution limits:
         filter_bg=args.filter_bg,
         bg_tolerance=args.bg_tolerance,
         rotation=beam_rotation
-        orientation=args.orientation
     )
 
     # Save blueprint
