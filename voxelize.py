@@ -31,6 +31,10 @@ class ObjectType(Enum):
 
 class Rotation(Enum):
     """Common rotation presets for painted beams"""
+    HORIZONTAL_0 = (0.0, 0.0, 0.0, 1.0)  # Facing forward
+    HORIZONTAL_90 = (0.0, 0.0, 0.707107, 0.707107)  # Rotated 90°
+    HORIZONTAL_180 = (0.0, 0.0, 1.0, 0.0)  # Facing back
+    HORIZONTAL_270 = (0.0, 0.0, -0.707107, 0.707107)  # Rotated 270°
     VERTICAL = (-0.5, 0.5, -0.5, -0.5)  # Standing upright
 
     @property
@@ -445,7 +449,8 @@ class ModelVoxelizer:
             name: Optional[str] = None,
             max_dimension: float = 10000.0,
             default_color: Optional[Tuple[float, float, float]] = None,
-            use_vertex_colors: bool = True
+            use_vertex_colors: bool = True,
+            rotation: Rotation = Rotation.VERTICAL
     ) -> Blueprint:
         """
         Convert 3D model to voxelized blueprint.
@@ -456,6 +461,7 @@ class ModelVoxelizer:
             max_dimension: Maximum model size in cm
             default_color: Default RGB color (0-1) if no vertex colors
             use_vertex_colors: Whether to sample colors from mesh
+            rotation: Beam rotation (default: Rotation.VERTICAL)
 
         Returns:
             Blueprint object
@@ -496,7 +502,7 @@ class ModelVoxelizer:
             blueprint.add_object(
                 ObjectType.BEAM_PAINTED,
                 Vector3(float(pos[0]), float(pos[1]), float(pos[2])),
-                Rotation.VERTICAL,
+                rotation,
                 color
             )
 
@@ -545,6 +551,8 @@ Tips:
                         help='Default RGB color in 0-1 range (e.g., 1 0.5 0 for orange)')
     parser.add_argument('--no-vertex-colors', action='store_true',
                         help='Ignore vertex colors from model')
+    parser.add_argument('-H', '--horizontal', action='store_true',
+                        help='Use horizontal beam orientation (default: vertical)')
 
     args = parser.parse_args()
 
@@ -573,12 +581,17 @@ Tips:
     try:
         # Convert model to blueprint
         voxelizer = ModelVoxelizer(voxel_size=args.voxel_size)
+
+        # Determine rotation based on horizontal flag
+        beam_rotation = Rotation.HORIZONTAL_0 if args.horizontal else Rotation.VERTICAL
+
         blueprint = voxelizer.convert(
             args.model,
             name=args.name,
             max_dimension=args.max_size,
             default_color=default_color,
-            use_vertex_colors=not args.no_vertex_colors
+            use_vertex_colors=not args.no_vertex_colors,
+            rotation=beam_rotation
         )
 
         # Save blueprint

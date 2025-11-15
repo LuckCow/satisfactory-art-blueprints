@@ -544,7 +544,8 @@ class ImageToBlueprint:
             base_z: float = 1200.0,
             layers: Optional[List[Layer]] = None,
             filter_bg: Optional[str] = None,
-            bg_tolerance: float = 30.0
+            bg_tolerance: float = 30.0,
+            rotation: Rotation = Rotation.VERTICAL
     ) -> Blueprint:
         """
         Convert image to painted beam blueprint
@@ -557,6 +558,7 @@ class ImageToBlueprint:
             layers: List of dimensional layers (primary layer at index 0)
             filter_bg: Background filter method: 'auto', 'corners', 'brightness', or None
             bg_tolerance: Tolerance for background color matching (0-255)
+            rotation: Beam rotation (default: Rotation.VERTICAL)
         """
         img_array = self.load_and_prepare_image(image_path, target_size, filter_bg, bg_tolerance)
         height, width = img_array.shape[:2]
@@ -611,7 +613,7 @@ class ImageToBlueprint:
                 blueprint.add_object(
                     ObjectType.BEAM_PAINTED,
                     pos,
-                    Rotation.VERTICAL,
+                    rotation,
                     color_linear
                 )
                 object_count += 1
@@ -727,6 +729,8 @@ Resolution limits:
                         help='Filter background: auto (corner color), corners (average corners), brightness (dark/bright)')
     parser.add_argument('--bg-tolerance', type=float, default=30.0,
                         help='Background color tolerance 0-255 (default: 30, lower=stricter)')
+    parser.add_argument('-H', '--horizontal', action='store_true',
+                        help='Use horizontal beam orientation (default: vertical)')
 
     args = parser.parse_args()
 
@@ -804,13 +808,18 @@ Resolution limits:
     # Convert image to blueprint
     print(f"\n🔧 Converting image to painted beam blueprint...")
     converter = ImageToBlueprint(beam_spacing=args.spacing)
+
+    # Determine rotation based on horizontal flag
+    beam_rotation = Rotation.HORIZONTAL_0 if args.horizontal else Rotation.VERTICAL
+
     blueprint = converter.convert(
         args.image,
         name=args.name,
         target_size=target_size,
         base_z=args.base_z,
         filter_bg=args.filter_bg,
-        bg_tolerance=args.bg_tolerance
+        bg_tolerance=args.bg_tolerance,
+        rotation=beam_rotation
     )
 
     # Save blueprint
