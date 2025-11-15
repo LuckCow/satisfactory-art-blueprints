@@ -293,7 +293,7 @@ class Blueprint:
 
         # Default beam configuration
         self.beam_spacing = 100.0  # 100cm between beams (tight grid)
-        self.default_rotation = Rotation.HORIZONTAL_270  # Vertical picture orientation
+        self.default_rotation = Rotation.HORIZONTAL_90  # Vertical picture orientation
 
     def add_layer(self, layer: Layer):
         """Add a dimensional layer"""
@@ -383,11 +383,11 @@ class ImageToBlueprint:
     """Convert images to painted beam pixel art"""
 
     def __init__(self, beam_spacing: float = 100.0, condensed_rendering: bool = False,
-                 cr_multiplier: int = 2, cr_z_offset: float = 0.001):
+                 cr_multiplier: int = 2, cr_depth_offset: float = 0.001):
         self.beam_spacing = beam_spacing
         self.condensed_rendering = condensed_rendering
         self.cr_multiplier = cr_multiplier  # Number of sub-beams per pixel (NxN grid)
-        self.cr_z_offset = cr_z_offset  # Z offset increment per layer
+        self.cr_depth_offset = cr_depth_offset  # Depth offset increment per layer
 
     def rgb_to_linear(self, r: int, g: int, b: int) -> Tuple[float, float, float]:
         """
@@ -509,20 +509,20 @@ class ImageToBlueprint:
             base_y: float,
             base_z: float,
             multiplier: int,
-            z_offset: float
+            depth_offset: float
     ) -> List[Tuple[Vector3, Tuple[float, float, float]]]:
         """
         Generate overlapping beams for condensed rendering with perpendicular clipping
 
         Creates an NxN grid of sub-beams within a single pixel space,
-        with outer corners at base depth and inner beams progressively deeper.
-        For vertical layout (X-Z plane), clipping occurs in Y direction.
+        with outer corners at base depth and inner beams progressively closer.
+        For vertical layout (X-Z plane), clipping occurs in Y direction (depth).
 
         Args:
             color_linear: RGB color in linear space (0-1)
             base_x, base_y, base_z: Base position for this pixel
             multiplier: Number of sub-beams per axis (NxN grid)
-            z_offset: Offset increment per layer (applied to perpendicular axis)
+            depth_offset: Depth offset increment per layer (applied to Y axis for vertical layout)
 
         Returns:
             List of (position, color) tuples for each sub-beam
@@ -537,14 +537,14 @@ class ImageToBlueprint:
                 z_off = (j - (multiplier - 1) / 2.0) * sub_spacing
 
                 # Calculate depth based on distance from edges
-                # Outer corners (edge_dist=0) are at base depth, inner beams go progressively deeper
+                # Outer corners (edge_dist=0) are at base depth, inner beams progressively come closer
                 edge_dist = min(i, multiplier - 1 - i, j, multiplier - 1 - j)
-                y_depth = edge_dist * z_offset  # Depth in Y direction (perpendicular to X-Z plane)
+                y_depth = edge_dist * depth_offset  # Depth in Y direction (perpendicular to X-Z plane)
 
                 # Create position for this sub-beam
                 pos = Vector3(
                     x=base_x + x_off,
-                    y=base_y + y_depth,  # Add to go deeper into the wall (away from viewer)
+                    y=base_y - y_depth,  # Subtract to come closer to viewer
                     z=base_z + z_off
                 )
 
@@ -669,7 +669,7 @@ class ImageToBlueprint:
                         base_pos_y,
                         base_pos_z,
                         self.cr_multiplier,
-                        self.cr_z_offset
+                        self.cr_depth_offset
                     )
 
                     # Add all sub-beams to the blueprint
@@ -773,16 +773,17 @@ Examples:
   %(prog)s image.png -H                     # Use horizontal picture layout (X-Y plane)
   %(prog)s image.png --condensed            # Enable condensed rendering (2x2 beams per pixel)
   %(prog)s image.png --condensed --cr-multiplier 3  # 3x3 beams per pixel (9x detail)
-  %(prog)s image.png --condensed --cr-z-offset 0.01 # Larger z-offset for experimentation
+  %(prog)s image.png --condensed --cr-depth-offset 0.01 # Larger depth-offset for experimentation
 
 Condensed rendering:
-  --condensed:        Enable condensed rendering mode with z-clipping
-  --cr-multiplier N:  Number of beams per pixel axis (NxN grid, default: 2)
-  --cr-z-offset:      Z-height offset between beam layers in cm (default: 0.001)
+  --condensed:           Enable condensed rendering mode with depth-clipping
+  --cr-multiplier N:     Number of beams per pixel axis (NxN grid, default: 2)
+  --cr-depth-offset:     Depth offset between beam layers in cm (default: 0.001)
 
   Condensed rendering packs multiple beams in the same pixel space using tiny
-  z-offsets to clip them together. Outer corners are highest, inner beams are
-  progressively lower. This allows higher detail in the same blueprint area.
+  depth offsets to clip them together. Outer corners are at base depth, inner
+  beams progressively come closer to the viewer. This allows higher detail in
+  the same blueprint area.
   Example: 64x64 image with --cr-multiplier 2 creates 16,384 beams (4 per pixel).
 
 Background filtering:
@@ -821,11 +822,11 @@ Resolution limits:
     parser.add_argument('-H', '--horizontal', action='store_true',
                         help='Use horizontal picture layout (X-Y plane, beams vertical). Default: vertical picture layout (X-Z plane, beams horizontal)')
     parser.add_argument('--condensed', action='store_true',
-                        help='Enable condensed rendering: pack multiple beams per pixel using z-clipping for higher detail')
+                        help='Enable condensed rendering: pack multiple beams per pixel using depth-clipping for higher detail')
     parser.add_argument('--cr-multiplier', type=int, default=2, metavar='N',
                         help='Condensed rendering: NxN grid of sub-beams per pixel (default: 2, i.e., 2x2=4 beams per pixel)')
-    parser.add_argument('--cr-z-offset', type=float, default=0.001, metavar='OFFSET',
-                        help='Condensed rendering: Z offset increment between layers in cm (default: 0.001)')
+    parser.add_argument('--cr-depth-offset', type=float, default=0.001, metavar='OFFSET',
+                        help='Condensed rendering: Depth offset increment between layers in cm (default: 0.001, applies to Y axis for vertical layout)')
 
     args = parser.parse_args()
 
@@ -903,18 +904,18 @@ Resolution limits:
     # Convert image to blueprint
     print(f"\n🔧 Converting image to painted beam blueprint...")
     if args.condensed:
-        print(f"   Condensed rendering enabled: {args.cr_multiplier}x{args.cr_multiplier} beams per pixel (z-offset: {args.cr_z_offset} cm)")
+        print(f"   Condensed rendering enabled: {args.cr_multiplier}x{args.cr_multiplier} beams per pixel (depth-offset: {args.cr_depth_offset} cm)")
     converter = ImageToBlueprint(
         beam_spacing=args.spacing,
         condensed_rendering=args.condensed,
         cr_multiplier=args.cr_multiplier,
-        cr_z_offset=args.cr_z_offset
+        cr_depth_offset=args.cr_depth_offset
     )
 
     # Determine rotation based on horizontal flag
-    # Vertical picture (default) uses HORIZONTAL_270 rotation for beams lying in X-Z plane
+    # Vertical picture (default) uses HORIZONTAL_90 rotation for beams lying in X-Z plane
     # Horizontal picture uses VERTICAL rotation for beams standing through X-Y plane
-    beam_rotation = Rotation.VERTICAL if args.horizontal else Rotation.HORIZONTAL_270
+    beam_rotation = Rotation.VERTICAL if args.horizontal else Rotation.HORIZONTAL_90
 
     blueprint = converter.convert(
         args.image,
