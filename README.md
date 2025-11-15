@@ -1,0 +1,339 @@
+# Satisfactory Art Blueprints
+
+CLI tools for converting images and 3D models to Satisfactory blueprint JSON files using painted beams.
+
+## Features
+
+- **Image to Blueprint**: Convert any image to pixel art using painted beams with custom RGB colors
+- **3D Model to Blueprint**: Voxelize 3D models (STL, OBJ, PLY, GLTF, etc.) into painted beam structures
+- **Flexible Resolution**: Support from 16×16 pixel art to 4K (3840×2160) images
+- **Custom Colors**: Pixel-perfect RGB color matching using linear color space
+- **Background Filtering**: Automatic background removal for cleaner results
+- **Surface Voxelization**: Efficient hollow 3D structures
+
+## Quick Start
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/LuckCow/satisfactory-art-blueprints.git
+cd satisfactory-art-blueprints
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+### Convert an Image
+
+```bash
+# Simple conversion (full resolution)
+python blueprint_gen.py image.png
+
+# Downsample to specific size
+python blueprint_gen.py image.png -s 64x64
+
+# Use percentage scaling
+python blueprint_gen.py image.png -s 50%
+
+# Remove background automatically
+python blueprint_gen.py image.png -s 128x128 --filter-bg auto
+```
+
+### Convert a 3D Model
+
+```bash
+# Convert with default settings (100cm voxels)
+python voxelize.py model.stl
+
+# Higher detail (50cm voxels)
+python voxelize.py model.obj -s 50
+
+# Lower detail (200cm voxels)
+python voxelize.py model.stl -s 200
+
+# Custom color
+python voxelize.py model.glb --color 1 0.5 0
+```
+
+## Project Structure
+
+```
+satisfactory-art-blueprints/
+├── blueprint_gen.py        # CLI for image conversion
+├── voxelize.py             # CLI for 3D model conversion
+├── requirements.txt        # Python dependencies
+├── README.md              # This file
+├── lib/                   # Shared library modules
+│   ├── __init__.py
+│   ├── blueprint.py       # Core blueprint classes
+│   ├── image_processor.py # Image conversion logic
+│   └── model_voxelizer.py # 3D model voxelization
+├── docs/                  # Documentation
+│   └── blueprint_gen_doc.md
+└── examples/              # Example blueprints
+    └── CustomSwatchColorBeams.json
+```
+
+## CLI Reference
+
+### Image Conversion (`blueprint_gen.py`)
+
+Convert images to painted beam pixel art.
+
+#### Basic Usage
+
+```bash
+python blueprint_gen.py <image> [options]
+```
+
+#### Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `-s, --size SIZE` | Target resolution (WxH, "W H", or %) | Full resolution |
+| `-o, --output FILE` | Output JSON file | `<image>.json` |
+| `-n, --name NAME` | Blueprint name | Image filename |
+| `--spacing FLOAT` | Beam spacing in cm | 100.0 |
+| `--base-z FLOAT` | Base Z height in cm | 1200.0 |
+| `--max-4k` | Enforce 4K resolution limit | Off |
+| `--filter-bg MODE` | Background filter (auto/corners/brightness) | None |
+| `--bg-tolerance FLOAT` | Background color tolerance (0-255) | 30.0 |
+
+#### Resolution Formats
+
+```bash
+# Exact dimensions
+python blueprint_gen.py image.png -s 64x64
+python blueprint_gen.py image.png -s 1920x1080
+
+# Space-separated (requires quotes)
+python blueprint_gen.py image.png -s "128 128"
+
+# Percentage of original
+python blueprint_gen.py image.png -s 50%
+python blueprint_gen.py image.png -s 25%
+```
+
+#### Examples
+
+```bash
+# Small pixel art
+python blueprint_gen.py sprite.png -s 32x32
+
+# Medium artwork with background removal
+python blueprint_gen.py photo.jpg -s 256x256 --filter-bg auto
+
+# Large scene with custom spacing
+python blueprint_gen.py landscape.jpg -s 512x512 --spacing 150
+```
+
+### 3D Model Conversion (`voxelize.py`)
+
+Convert 3D models to voxelized blueprints.
+
+#### Basic Usage
+
+```bash
+python voxelize.py <model> [options]
+```
+
+#### Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `-s, --voxel-size FLOAT` | Voxel size in cm | 100.0 |
+| `-o, --output FILE` | Output JSON file | `<model>.json` |
+| `-n, --name NAME` | Blueprint name | Model filename |
+| `--max-size FLOAT` | Max model dimension in cm | 10000.0 (100m) |
+| `--color R G B` | Default RGB color (0-1 range) | None |
+| `--no-vertex-colors` | Ignore vertex colors | Off |
+
+#### Supported Formats
+
+STL, OBJ, PLY, GLTF/GLB, FBX, DAE (Collada), 3DS, and more.
+
+#### Examples
+
+```bash
+# Default conversion
+python voxelize.py model.stl
+
+# High detail
+python voxelize.py model.obj -s 50
+
+# Low detail with custom color
+python voxelize.py model.stl -s 200 --color 1 0.5 0
+
+# Limit model size
+python voxelize.py huge_model.glb --max-size 5000
+```
+
+## Library Usage
+
+You can also use the library directly in your Python code:
+
+### Image to Blueprint
+
+```python
+from lib import ImageToBlueprint
+
+# Create converter
+converter = ImageToBlueprint(beam_spacing=100)
+
+# Convert image
+blueprint = converter.convert(
+    "image.png",
+    name="MyArt",
+    target_size=(64, 64),
+    base_z=1200.0,
+    filter_bg="auto"
+)
+
+# Save blueprint
+blueprint.save("output.json")
+```
+
+### 3D Model to Blueprint
+
+```python
+from lib import ModelVoxelizer
+
+# Create voxelizer
+voxelizer = ModelVoxelizer(voxel_size=100.0)
+
+# Convert model
+blueprint = voxelizer.convert(
+    "model.stl",
+    name="My3DArt",
+    max_dimension=10000.0,
+    default_color=(1.0, 0.5, 0.0)  # Orange
+)
+
+# Save blueprint
+blueprint.save("output.json")
+```
+
+### Creating Custom Blueprints
+
+```python
+from lib import Blueprint, ObjectType, Rotation, Vector3
+
+# Create blueprint
+blueprint = Blueprint("Custom")
+
+# Add painted beams
+blueprint.add_object(
+    ObjectType.BEAM_PAINTED,
+    Vector3(x=0, y=0, z=1200),
+    Rotation.VERTICAL,
+    color_rgb=(1.0, 0.0, 0.0)  # Red
+)
+
+blueprint.save("custom.json")
+```
+
+## Resolution Guidelines
+
+### Image Conversion
+
+| Use Case | Recommended Size | Beams | File Size |
+|----------|------------------|-------|-----------|
+| Icons/Sprites | 16×16 to 32×32 | 256-1K | 0.5-2 MB |
+| Small Art | 64×64 to 128×128 | 4K-16K | 8-33 MB |
+| Medium Art | 256×256 to 512×512 | 65K-262K | 133-535 MB |
+| Large Scenes | 1024×1024 to 1920×1080 | 1M-2M | 2-4 GB |
+| Maximum | 3840×2160 (4K) | 8.3M | ~17 GB |
+
+### 3D Model Voxelization
+
+| Voxel Size | Detail Level | Use Case |
+|------------|--------------|----------|
+| 50cm | High | Small detailed models |
+| 100cm (default) | Medium | General purpose |
+| 200cm | Low | Large structures, testing |
+
+## Color System
+
+### Custom RGB Colors
+
+The tools use **linear color space** with gamma correction for accurate color reproduction:
+
+- Colors are specified as RGB values in 0-1 range
+- Automatic sRGB to linear conversion
+- Pixel-perfect color matching from images
+- Support for custom paint finishes
+
+### Background Filtering
+
+Remove unwanted backgrounds from images:
+
+- `auto`: Uses top-left corner color
+- `corners`: Averages all four corners
+- `brightness`: Removes very dark/bright pixels
+- Adjustable tolerance (0-255)
+
+## Technical Details
+
+### Architecture
+
+- **Blueprint Core**: Shared classes for all blueprint operations
+  - ObjectType, Rotation, Vector3, Quaternion
+  - BlueprintObject and Blueprint classes
+  - Layer support for multi-dimensional art
+
+- **Image Processor**: Specialized for 2D image conversion
+  - PIL/Pillow integration
+  - Background filtering algorithms
+  - Color space conversion
+
+- **Model Voxelizer**: Specialized for 3D model conversion
+  - Trimesh integration
+  - Surface-only voxelization (hollow structures)
+  - Vertex color sampling
+
+### Blueprint Format
+
+Output files are JSON blueprints compatible with:
+- [Satisfactory Blueprint Designer](https://github.com/Goz3rr/SatisfactorySaveEditor)
+- In-game blueprint system (via save file import)
+
+## Tips & Best Practices
+
+1. **Start Small**: Test with 64×64 before scaling up
+2. **Use Percentages**: Quick way to downsample large images (`-s 50%`)
+3. **Background Removal**: Use `--filter-bg auto` for images with solid backgrounds
+4. **File Sizes**: Large blueprints (>1GB) may be slow to load in-game
+5. **3D Models**: Start with 200cm voxels for testing, then refine
+6. **Memory**: 4K conversions require 16GB+ RAM
+
+## Requirements
+
+- Python 3.7+
+- Pillow >= 10.0.0
+- numpy >= 1.24.0
+- trimesh >= 3.23.0
+
+See `requirements.txt` for full dependency list.
+
+## Documentation
+
+- [Blueprint Generator Documentation](docs/blueprint_gen_doc.md) - Detailed CLI guide
+- [Example Blueprints](examples/) - Sample blueprint files
+
+## Contributing
+
+Contributions welcome! This project follows the DRY (Don't Repeat Yourself) principle with:
+- Shared core modules in `lib/`
+- Focused CLI wrappers
+- Type-safe enums and dataclasses
+
+## License
+
+MIT License - see LICENSE file for details
+
+## Acknowledgments
+
+- Built for [Satisfactory](https://www.satisfactorygame.com/) by Coffee Stain Studios
+- Uses painted beams as voxel/pixel primitives
+- Compatible with community blueprint tools

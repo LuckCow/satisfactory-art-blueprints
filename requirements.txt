@@ -1,0 +1,10 @@
+# Core dependencies
+Pillow>=10.0.0       # Image processing
+numpy>=1.24.0        # Numerical operations
+trimesh>=3.23.0      # 3D model loading and processing
+
+# Optional dependencies for enhanced 3D model support
+# Uncomment if needed for specific model formats
+# rtree>=1.0.0       # Spatial indexing for trimesh
+# networkx>=3.0      # Graph operations for trimesh
+# pyglet>=2.0        # 3D visualization (optional)
