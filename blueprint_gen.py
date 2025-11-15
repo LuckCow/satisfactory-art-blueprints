@@ -544,7 +544,8 @@ class ImageToBlueprint:
             base_z: float = 1200.0,
             layers: Optional[List[Layer]] = None,
             filter_bg: Optional[str] = None,
-            bg_tolerance: float = 30.0
+            bg_tolerance: float = 30.0,
+            orientation: str = 'horizontal'
     ) -> Blueprint:
         """
         Convert image to painted beam blueprint
@@ -557,6 +558,7 @@ class ImageToBlueprint:
             layers: List of dimensional layers (primary layer at index 0)
             filter_bg: Background filter method: 'auto', 'corners', 'brightness', or None
             bg_tolerance: Tolerance for background color matching (0-255)
+            orientation: 'horizontal' or 'vertical' - beam orientation
         """
         img_array = self.load_and_prepare_image(image_path, target_size, filter_bg, bg_tolerance)
         height, width = img_array.shape[:2]
@@ -572,7 +574,13 @@ class ImageToBlueprint:
         else:
             blueprint.add_layer(Layer("Primary", z_offset=0, density=1.0))
 
-        print(f"Converting {width}x{height} image ({width * height} pixels)...")
+        # Determine beam rotation based on orientation
+        if orientation.lower() == 'vertical':
+            beam_rotation = Rotation.HORIZONTAL_90
+            print(f"Converting {width}x{height} image ({width * height} pixels) with VERTICAL orientation...")
+        else:
+            beam_rotation = Rotation.VERTICAL
+            print(f"Converting {width}x{height} image ({width * height} pixels) with HORIZONTAL orientation...")
 
         # Center the grid
         offset_x = -(width * self.beam_spacing) / 2
@@ -611,7 +619,7 @@ class ImageToBlueprint:
                 blueprint.add_object(
                     ObjectType.BEAM_PAINTED,
                     pos,
-                    Rotation.VERTICAL,
+                    beam_rotation,
                     color_linear
                 )
                 object_count += 1
@@ -693,6 +701,8 @@ Examples:
   %(prog)s image.png --spacing 150          # Increase beam spacing
   %(prog)s image.png --filter-bg auto       # Auto-detect and remove background
   %(prog)s image.png --filter-bg corners --bg-tolerance 50  # Remove corner color
+  %(prog)s image.png --orientation vertical # Vertical orientation (beams rotated 90° in Z)
+  %(prog)s image.png --orientation horizontal  # Horizontal orientation (default)
 
 Background filtering:
   --filter-bg auto:       Use top-left corner color as background
@@ -727,6 +737,8 @@ Resolution limits:
                         help='Filter background: auto (corner color), corners (average corners), brightness (dark/bright)')
     parser.add_argument('--bg-tolerance', type=float, default=30.0,
                         help='Background color tolerance 0-255 (default: 30, lower=stricter)')
+    parser.add_argument('--orientation', type=str, choices=['horizontal', 'vertical'], default='horizontal',
+                        help='Beam orientation: horizontal (default) or vertical (rotated 90° in Z-axis)')
 
     args = parser.parse_args()
 
@@ -810,7 +822,8 @@ Resolution limits:
         target_size=target_size,
         base_z=args.base_z,
         filter_bg=args.filter_bg,
-        bg_tolerance=args.bg_tolerance
+        bg_tolerance=args.bg_tolerance,
+        orientation=args.orientation
     )
 
     # Save blueprint

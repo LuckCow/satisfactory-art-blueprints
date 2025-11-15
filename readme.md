@@ -97,11 +97,16 @@ converter = ImageToBlueprint(beam_spacing=100)
 blueprint = converter.convert(
     "image.png",
     target_size=(32, 32),  # Downsample to 32x32
-    base_z=1200.0          # Height in cm
+    base_z=1200.0,         # Height in cm
+    orientation='horizontal'  # 'horizontal' or 'vertical'
 )
 
 blueprint.save("pixel_art.json")
 ```
+
+**Orientation Options:**
+- `'horizontal'` (default): Beams stand upright (VERTICAL rotation)
+- `'vertical'`: Beams rotated 90° in Z-axis (HORIZONTAL_90 rotation)
 
 ## Scalability
 
@@ -124,6 +129,12 @@ python blueprint_gen.py image.png -o art.json --spacing 150
 
 # Adjust base height
 python blueprint_gen.py image.png --base-z 1500
+
+# Vertical orientation (beams rotated 90° in Z-axis)
+python blueprint_gen.py image.png --orientation vertical
+
+# Horizontal orientation (default)
+python blueprint_gen.py image.png --orientation horizontal
 ```
 
 ## Examples
