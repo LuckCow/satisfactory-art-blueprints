@@ -108,7 +108,7 @@ python blueprint_gen.py <image> [options]
 | `--bg-tolerance FLOAT` | Background color tolerance (0-255) | 30.0 |
 | `--condensed` | Enable condensed rendering with z-clipping | Off |
 | `--cr-multiplier N` | NxN grid of beams per pixel (condensed mode) | 2 |
-| `--cr-z-offset FLOAT` | Z-offset between layers in cm (condensed mode) | 0.001 |
+| `--cr-z-offset FLOAT` | Z-offset between layers in cm (condensed mode) | 0.01 |
 
 #### Resolution Formats
 
@@ -217,7 +217,7 @@ converter_condensed = ImageToBlueprint(
     beam_spacing=100,
     condensed_rendering=True,
     cr_multiplier=3,  # 3x3 grid = 9 beams per pixel
-    cr_z_offset=0.001
+    cr_z_offset=0.01
 )
 
 blueprint = converter_condensed.convert(
@@ -349,7 +349,7 @@ python blueprint_gen.py image.png -s 64x64 --condensed --cr-z-offset 0.01
 - `--cr-multiplier N`: Create an NxN grid of beams per pixel (default: 2)
   - Higher values = more detail but larger files
   - Formula: `total_beams = pixels × (multiplier²)`
-- `--cr-z-offset FLOAT`: Z-offset increment between layers in cm (default: 0.001)
+- `--cr-z-offset FLOAT`: Z-offset increment between layers in cm (default: 0.01)
   - Prevents beam clipping
   - Smaller values = tighter packing
 

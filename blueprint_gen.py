@@ -383,7 +383,7 @@ class ImageToBlueprint:
     """Convert images to painted beam pixel art"""
 
     def __init__(self, beam_spacing: float = 100.0, condensed_rendering: bool = False,
-                 cr_multiplier: int = 2, cr_z_offset: float = 0.001):
+                 cr_multiplier: int = 2, cr_z_offset: float = 0.01):
         self.beam_spacing = beam_spacing
         self.condensed_rendering = condensed_rendering
         self.cr_multiplier = cr_multiplier  # Number of sub-beams per pixel (NxN grid)
@@ -825,8 +825,8 @@ Resolution limits:
                         help='Enable condensed rendering: pack multiple beams per pixel using z-clipping for higher detail')
     parser.add_argument('--cr-multiplier', type=int, default=2, metavar='N',
                         help='Condensed rendering: NxN grid of sub-beams per pixel (default: 2, i.e., 2x2=4 beams per pixel)')
-    parser.add_argument('--cr-z-offset', type=float, default=0.001, metavar='OFFSET',
-                        help='Condensed rendering: Z offset increment between layers in cm (default: 0.001)')
+    parser.add_argument('--cr-z-offset', type=float, default=0.01, metavar='OFFSET',
+                        help='Condensed rendering: Z offset increment between layers in cm (default: 0.01)')
 
     args = parser.parse_args()
 

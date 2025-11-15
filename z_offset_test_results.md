@@ -3,7 +3,7 @@
 ## Test Environment
 - **Test Image:** test_image.png (16x16 pixels, 256 total pixels)
 - **Feature:** Condensed rendering with z-clipping
-- **Default z-offset:** 0.001 cm
+- **Default z-offset:** 0.01 cm (updated from 0.001 cm for better visibility)
 
 ## Test Results Summary
 
