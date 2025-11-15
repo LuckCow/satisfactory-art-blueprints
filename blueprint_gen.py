@@ -520,12 +520,18 @@ class ImageToBlueprint:
         """
         img = Image.open(path).convert('RGBA')
 
+        # Calculate final size upfront for condensed rendering to avoid double-resizing and fidelity loss
         if target_size:
-            img = img.resize(target_size, Image.Resampling.LANCZOS)
-            print(f"Resized to {target_size[0]}x{target_size[1]}")
-
-        # Upscale by multiplier for condensed rendering
-        if self.condensed_rendering:
+            if self.condensed_rendering:
+                # For condensed rendering, calculate the final upscaled size and resize once
+                final_size = (target_size[0] * self.cr_multiplier, target_size[1] * self.cr_multiplier)
+                img = img.resize(final_size, Image.Resampling.LANCZOS)
+                print(f"Resized to {final_size[0]}x{final_size[1]} for condensed rendering (target: {target_size[0]}x{target_size[1]}, multiplier: {self.cr_multiplier}x)")
+            else:
+                img = img.resize(target_size, Image.Resampling.LANCZOS)
+                print(f"Resized to {target_size[0]}x{target_size[1]}")
+        elif self.condensed_rendering:
+            # No target_size but condensed rendering enabled - upscale from original resolution
             upscaled_size = (img.width * self.cr_multiplier, img.height * self.cr_multiplier)
             img = img.resize(upscaled_size, Image.Resampling.LANCZOS)
             print(f"Upscaled for condensed rendering to {upscaled_size[0]}x{upscaled_size[1]}")
