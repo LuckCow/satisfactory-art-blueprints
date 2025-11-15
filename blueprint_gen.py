@@ -509,7 +509,8 @@ class ImageToBlueprint:
             base_y: float,
             base_z: float,
             multiplier: int,
-            depth_offset: float
+            depth_offset: float,
+            global_edge_dist: int = 0
     ) -> List[Tuple[Vector3, Tuple[float, float, float]]]:
         """
         Generate overlapping beams for condensed rendering with perpendicular clipping
@@ -523,6 +524,7 @@ class ImageToBlueprint:
             base_x, base_y, base_z: Base position for this pixel
             multiplier: Number of sub-beams per axis (NxN grid)
             depth_offset: Depth offset increment per layer (applied to Y axis for vertical layout)
+            global_edge_dist: Distance from the edge of the entire image (in pixels)
 
         Returns:
             List of (position, color) tuples for each sub-beam
@@ -536,10 +538,11 @@ class ImageToBlueprint:
                 x_off = (i - (multiplier - 1) / 2.0) * sub_spacing
                 z_off = (j - (multiplier - 1) / 2.0) * sub_spacing
 
-                # Calculate depth based on distance from edges
-                # Outer corners (edge_dist=0) are at base depth, inner beams progressively come closer
-                edge_dist = min(i, multiplier - 1 - i, j, multiplier - 1 - j)
-                y_depth = edge_dist * depth_offset  # Depth in Y direction (perpendicular to X-Z plane)
+                # Calculate depth based on global distance from edges of the entire image
+                # Edge pixels (global_edge_dist=0) are at base depth, inner pixels progressively come closer
+                # Also add local variation within the NxN grid for additional layering
+                local_edge_dist = min(i, multiplier - 1 - i, j, multiplier - 1 - j)
+                y_depth = (global_edge_dist + local_edge_dist / multiplier) * depth_offset
 
                 # Create position for this sub-beam
                 pos = Vector3(
@@ -662,6 +665,10 @@ class ImageToBlueprint:
                 base_pos_z = offset_z + ((height - 1 - y) * self.beam_spacing)
 
                 if self.condensed_rendering:
+                    # Calculate distance from edge of the entire image
+                    # This determines the Y-depth layering for condensed rendering
+                    global_edge_dist = min(x, width - 1 - x, y, height - 1 - y)
+
                     # Generate multiple overlapping beams for this pixel
                     sub_beams = self.generate_overlapping_beams(
                         color_linear,
@@ -669,7 +676,8 @@ class ImageToBlueprint:
                         base_pos_y,
                         base_pos_z,
                         self.cr_multiplier,
-                        self.cr_depth_offset
+                        self.cr_depth_offset,
+                        global_edge_dist
                     )
 
                     # Add all sub-beams to the blueprint
