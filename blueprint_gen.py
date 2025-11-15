@@ -1,17 +1,12 @@
 #!/usr/bin/env python3
 """
-Blueprint Generator v2 - Dimensional Manifold System
-Focus: Painted beams as pixels in multi-dimensional layers
+Blueprint Generator - Image to Painted Beam Pixel Art
+Convert images to Satisfactory blueprints using painted beams as pixels
 """
 
-import json
 import argparse
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional
-from dataclasses import dataclass, field
-from enum import Enum
 from PIL import Image
-import numpy as np
 
 
 class ObjectType(Enum):
@@ -689,12 +684,14 @@ Examples:
   %(prog)s image.png -s 64x64               # Downsample to 64x64
   %(prog)s image.png -s "128 128"           # Downsample to 128x128 (space-separated)
   %(prog)s image.png -s 1920x1080           # Downsample to 1080p
-  %(prog)s image.png -s 50%%%%              # Downsample to 50%%%% of original
-  %(prog)s image.png -s 25%%%%              # Downsample to 25%%%% of original
+  %(prog)s image.png -s 50%%              # Downsample to 50%% of original
+  %(prog)s image.png -s 25%%              # Downsample to 25%% of original
   %(prog)s image.png -o art.json -n "Art"   # Custom output and name
   %(prog)s image.png --spacing 150          # Increase beam spacing
   %(prog)s image.png --filter-bg auto       # Auto-detect and remove background
   %(prog)s image.png --filter-bg corners --bg-tolerance 50  # Remove corner color
+  %(prog)s image.png --orientation vertical # Vertical orientation (beams rotated 90° in Z)
+  %(prog)s image.png --orientation horizontal  # Horizontal orientation (default)
 
 Background filtering:
   --filter-bg auto:       Use top-left corner color as background
@@ -705,7 +702,7 @@ Background filtering:
 Resolution formats:
   - WxH:      64x64, 1920x1080, 3840x2160
   - "W H":    "64 64", "1920 1080" (use quotes for spaces)
-  - Percent:  50%%%%, 25%%%%, 10%%%%
+  - Percent:  50%%, 25%%, 10%%
 
 Resolution limits:
   - Maximum: 4K (3840x2160 = 8,294,400 beams)
@@ -731,6 +728,8 @@ Resolution limits:
                         help='Background color tolerance 0-255 (default: 30, lower=stricter)')
     parser.add_argument('-H', '--horizontal', action='store_true',
                         help='Use horizontal beam orientation (default: vertical)')
+    parser.add_argument('--orientation', type=str, choices=['horizontal', 'vertical'], default='horizontal',
+                        help='Beam orientation: horizontal (default) or vertical (rotated 90° in Z-axis)')
 
     args = parser.parse_args()
 
@@ -820,6 +819,7 @@ Resolution limits:
         filter_bg=args.filter_bg,
         bg_tolerance=args.bg_tolerance,
         rotation=beam_rotation
+        orientation=args.orientation
     )
 
     # Save blueprint

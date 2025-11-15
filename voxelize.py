@@ -4,14 +4,8 @@
 Converts 3D models to Satisfactory blueprints using painted beams as voxels
 """
 
-import json
 import argparse
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional
-from dataclasses import dataclass
-from enum import Enum
-import numpy as np
-import trimesh
 
 
 class ObjectType(Enum):
@@ -509,6 +503,7 @@ class ModelVoxelizer:
         print(f"✓ Created {len(blueprint.objects):,} painted beams")
 
         return blueprint
+from lib.model_voxelizer import ModelVoxelizer
 
 
 def main():

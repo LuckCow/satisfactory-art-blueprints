@@ -62,6 +62,7 @@ python blueprint_gen_v2.py photo.jpg -s 10%     # 10% of original
 | `--spacing` | Beam spacing in cm | 100 |
 | `--base-z` | Base Z height in cm | 1200 |
 | `--max-4k` | Enforce 4K limit | Off |
+| `--orientation` | Beam orientation: `horizontal` or `vertical` | `horizontal` |
 
 ## Examples
 
@@ -108,6 +109,15 @@ python blueprint_gen_v2.py art.png -s 64x64 --spacing 200
 
 # Different base height
 python blueprint_gen_v2.py art.png -s 64x64 --base-z 1500
+```
+
+### Orientation Options
+```bash
+# Horizontal orientation (default) - beams stand upright
+python blueprint_gen_v2.py art.png -s 64x64 --orientation horizontal
+
+# Vertical orientation - beams rotated 90° in Z-axis
+python blueprint_gen_v2.py art.png -s 64x64 --orientation vertical
 ```
 
 ## Output Information
