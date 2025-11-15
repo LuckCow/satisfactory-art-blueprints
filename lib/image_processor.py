@@ -177,7 +177,8 @@ class ImageToBlueprint:
             base_z: float = 1200.0,
             layers: Optional[List[Layer]] = None,
             filter_bg: Optional[str] = None,
-            bg_tolerance: float = 30.0
+            bg_tolerance: float = 30.0,
+            orientation: str = 'horizontal'
     ) -> Blueprint:
         """
         Convert image to painted beam blueprint
@@ -190,6 +191,7 @@ class ImageToBlueprint:
             layers: List of dimensional layers (primary layer at index 0)
             filter_bg: Background filter method: 'auto', 'corners', 'brightness', or None
             bg_tolerance: Tolerance for background color matching (0-255)
+            orientation: 'horizontal' or 'vertical' - beam orientation
         """
         img_array = self.load_and_prepare_image(image_path, target_size, filter_bg, bg_tolerance)
         height, width = img_array.shape[:2]
@@ -205,7 +207,13 @@ class ImageToBlueprint:
         else:
             blueprint.add_layer(Layer("Primary", z_offset=0, density=1.0))
 
-        print(f"Converting {width}x{height} image ({width * height} pixels)...")
+        # Determine beam rotation based on orientation
+        if orientation.lower() == 'vertical':
+            beam_rotation = Rotation.HORIZONTAL_90
+            print(f"Converting {width}x{height} image ({width * height} pixels) with VERTICAL orientation...")
+        else:
+            beam_rotation = Rotation.VERTICAL
+            print(f"Converting {width}x{height} image ({width * height} pixels) with HORIZONTAL orientation...")
 
         # Center the grid
         offset_x = -(width * self.beam_spacing) / 2
@@ -244,7 +252,7 @@ class ImageToBlueprint:
                 blueprint.add_object(
                     ObjectType.BEAM_PAINTED,
                     pos,
-                    Rotation.VERTICAL,
+                    beam_rotation,
                     color_linear
                 )
                 object_count += 1
