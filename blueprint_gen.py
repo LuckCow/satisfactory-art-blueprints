@@ -567,7 +567,7 @@ class ImageToBlueprint:
             filter_bg: Background filter method: 'auto', 'corners', 'brightness', or None
             bg_tolerance: Tolerance for background color matching (0-255)
         """
-        img = Image.open(path).convert('RGB')
+        img = Image.open(path).convert('RGBA')
 
         if target_size:
             img = img.resize(target_size, Image.Resampling.LANCZOS)
