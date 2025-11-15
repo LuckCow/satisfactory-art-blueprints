@@ -9,7 +9,7 @@ from typing import Tuple, Optional, List
 import numpy as np
 from PIL import Image
 
-from blueprint import Blueprint, ObjectType, Rotation, Vector3, Layer
+from .blueprint import Blueprint, ObjectType, Rotation, Vector3, Layer
 
 
 class ImageToBlueprint:

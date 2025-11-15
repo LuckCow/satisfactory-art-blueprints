@@ -8,7 +8,7 @@ import argparse
 from pathlib import Path
 from PIL import Image
 
-from image_processor import ImageToBlueprint, parse_size_argument
+from lib.image_processor import ImageToBlueprint, parse_size_argument
 
 
 def main():

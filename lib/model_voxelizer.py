@@ -9,7 +9,7 @@ from typing import Tuple, Optional
 import numpy as np
 import trimesh
 
-from blueprint import Blueprint, ObjectType, Rotation, Vector3
+from .blueprint import Blueprint, ObjectType, Rotation, Vector3
 
 
 class ModelVoxelizer:

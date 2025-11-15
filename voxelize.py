@@ -7,7 +7,7 @@ Converts 3D models to Satisfactory blueprints using painted beams as voxels
 import argparse
 from pathlib import Path
 
-from model_voxelizer import ModelVoxelizer
+from lib.model_voxelizer import ModelVoxelizer
 
 
 def main():
