@@ -293,7 +293,7 @@ class Blueprint:
 
         # Default beam configuration
         self.beam_spacing = 100.0  # 100cm between beams (tight grid)
-        self.default_rotation = Rotation.VERTICAL
+        self.default_rotation = Rotation.HORIZONTAL_270  # Vertical picture orientation
 
     def add_layer(self, layer: Layer):
         """Add a dimensional layer"""
@@ -512,16 +512,17 @@ class ImageToBlueprint:
             z_offset: float
     ) -> List[Tuple[Vector3, Tuple[float, float, float]]]:
         """
-        Generate overlapping beams for condensed rendering with z-clipping
+        Generate overlapping beams for condensed rendering with perpendicular clipping
 
         Creates an NxN grid of sub-beams within a single pixel space,
-        with outer corners highest and inner beams progressively lower.
+        with outer corners at base depth and inner beams progressively deeper.
+        For vertical layout (X-Z plane), clipping occurs in Y direction.
 
         Args:
             color_linear: RGB color in linear space (0-1)
             base_x, base_y, base_z: Base position for this pixel
             multiplier: Number of sub-beams per axis (NxN grid)
-            z_offset: Z offset increment per layer
+            z_offset: Offset increment per layer (applied to perpendicular axis)
 
         Returns:
             List of (position, color) tuples for each sub-beam
@@ -531,20 +532,20 @@ class ImageToBlueprint:
 
         for i in range(multiplier):
             for j in range(multiplier):
-                # Calculate position offset within the pixel
+                # Calculate position offset within the pixel plane (X-Z for vertical layout)
                 x_off = (i - (multiplier - 1) / 2.0) * sub_spacing
-                y_off = (j - (multiplier - 1) / 2.0) * sub_spacing
+                z_off = (j - (multiplier - 1) / 2.0) * sub_spacing
 
-                # Calculate Z depth based on distance from edges
-                # Outer corners (edge_dist=0) are highest, inner beams go progressively lower
+                # Calculate depth based on distance from edges
+                # Outer corners (edge_dist=0) are at base depth, inner beams go progressively deeper
                 edge_dist = min(i, multiplier - 1 - i, j, multiplier - 1 - j)
-                z_depth = edge_dist * z_offset
+                y_depth = edge_dist * z_offset  # Depth in Y direction (perpendicular to X-Z plane)
 
                 # Create position for this sub-beam
                 pos = Vector3(
                     x=base_x + x_off,
-                    y=base_y + y_off,
-                    z=base_z - z_depth  # Subtract to go down (lower z = lower height)
+                    y=base_y + y_depth,  # Add to go deeper into the wall (away from viewer)
+                    z=base_z + z_off
                 )
 
                 beams.append((pos, color_linear))
@@ -629,9 +630,10 @@ class ImageToBlueprint:
 
         print(f"Converting {width}x{height} image ({width * height} pixels)...")
 
-        # Center the grid
+        # Center the grid - vertical layout uses X-Z plane
         offset_x = -(width * self.beam_spacing) / 2
-        offset_y = -(height * self.beam_spacing) / 2
+        offset_z = -(height * self.beam_spacing) / 2
+        base_y = -1000.0  # Constant Y depth for vertical layout
 
         # Generate beams for primary layer
         primary_layer = blueprint.layers[0]
@@ -654,17 +656,17 @@ class ImageToBlueprint:
                 # Convert RGB to linear color space (0-1 range with gamma correction)
                 color_linear = self.rgb_to_linear(r, g, b)
 
-                # Calculate base position for this pixel
+                # Calculate base position for this pixel - vertical layout (X-Z plane)
                 base_x = offset_x + (x * self.beam_spacing)
-                base_y = offset_y + (y * self.beam_spacing)
-                base_pos_z = base_z
+                base_pos_y = base_y  # Constant Y (depth into the wall)
+                base_pos_z = offset_z + (y * self.beam_spacing)
 
                 if self.condensed_rendering:
                     # Generate multiple overlapping beams for this pixel
                     sub_beams = self.generate_overlapping_beams(
                         color_linear,
                         base_x,
-                        base_y,
+                        base_pos_y,
                         base_pos_z,
                         self.cr_multiplier,
                         self.cr_z_offset
@@ -682,7 +684,7 @@ class ImageToBlueprint:
                         object_count += 1
                 else:
                     # Standard rendering: one beam per pixel
-                    pos = primary_layer.get_position(base_x, base_y, base_pos_z)
+                    pos = primary_layer.get_position(base_x, base_pos_y, base_pos_z)
                     blueprint.add_object(
                         ObjectType.BEAM_PAINTED,
                         pos,
@@ -768,8 +770,7 @@ Examples:
   %(prog)s image.png --spacing 150          # Increase beam spacing
   %(prog)s image.png --filter-bg auto       # Auto-detect and remove background
   %(prog)s image.png --filter-bg corners --bg-tolerance 50  # Remove corner color
-  %(prog)s image.png --orientation vertical # Vertical orientation (beams rotated 90° in Z)
-  %(prog)s image.png --orientation horizontal  # Horizontal orientation (default)
+  %(prog)s image.png -H                     # Use horizontal picture layout (X-Y plane)
   %(prog)s image.png --condensed            # Enable condensed rendering (2x2 beams per pixel)
   %(prog)s image.png --condensed --cr-multiplier 3  # 3x3 beams per pixel (9x detail)
   %(prog)s image.png --condensed --cr-z-offset 0.01 # Larger z-offset for experimentation
@@ -818,9 +819,7 @@ Resolution limits:
     parser.add_argument('--bg-tolerance', type=float, default=30.0,
                         help='Background color tolerance 0-255 (default: 30, lower=stricter)')
     parser.add_argument('-H', '--horizontal', action='store_true',
-                        help='Use horizontal beam orientation (default: vertical)')
-    parser.add_argument('--orientation', type=str, choices=['horizontal', 'vertical'], default='horizontal',
-                        help='Beam orientation: horizontal (default) or vertical (rotated 90° in Z-axis)')
+                        help='Use horizontal picture layout (X-Y plane, beams vertical). Default: vertical picture layout (X-Z plane, beams horizontal)')
     parser.add_argument('--condensed', action='store_true',
                         help='Enable condensed rendering: pack multiple beams per pixel using z-clipping for higher detail')
     parser.add_argument('--cr-multiplier', type=int, default=2, metavar='N',
@@ -913,7 +912,9 @@ Resolution limits:
     )
 
     # Determine rotation based on horizontal flag
-    beam_rotation = Rotation.HORIZONTAL_0 if args.horizontal else Rotation.VERTICAL
+    # Vertical picture (default) uses HORIZONTAL_270 rotation for beams lying in X-Z plane
+    # Horizontal picture uses VERTICAL rotation for beams standing through X-Y plane
+    beam_rotation = Rotation.VERTICAL if args.horizontal else Rotation.HORIZONTAL_270
 
     blueprint = converter.convert(
         args.image,
