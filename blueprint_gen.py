@@ -502,59 +502,6 @@ class ImageToBlueprint:
 
         return False
 
-    def generate_overlapping_beams(
-            self,
-            color_linear: Tuple[float, float, float],
-            base_x: float,
-            base_y: float,
-            base_z: float,
-            multiplier: int,
-            depth_offset: float,
-            global_edge_dist: int = 0
-    ) -> List[Tuple[Vector3, Tuple[float, float, float]]]:
-        """
-        Generate overlapping beams for condensed rendering with perpendicular clipping
-
-        Creates an NxN grid of sub-beams within a single pixel space,
-        with outer corners at base depth and inner beams progressively closer.
-        For vertical layout (X-Z plane), clipping occurs in Y direction (depth).
-
-        Args:
-            color_linear: RGB color in linear space (0-1)
-            base_x, base_y, base_z: Base position for this pixel
-            multiplier: Number of sub-beams per axis (NxN grid)
-            depth_offset: Depth offset increment per layer (applied to Y axis for vertical layout)
-            global_edge_dist: Distance from the edge of the entire image (in pixels)
-
-        Returns:
-            List of (position, color) tuples for each sub-beam
-        """
-        beams = []
-        sub_spacing = self.beam_spacing / multiplier
-
-        for i in range(multiplier):
-            for j in range(multiplier):
-                # Calculate position offset within the pixel plane (X-Z for vertical layout)
-                x_off = (i - (multiplier - 1) / 2.0) * sub_spacing
-                z_off = (j - (multiplier - 1) / 2.0) * sub_spacing
-
-                # Calculate depth based on global distance from edges of the entire image
-                # Edge pixels (global_edge_dist=0) are at base depth, inner pixels progressively come closer
-                # Also add local variation within the NxN grid for additional layering
-                local_edge_dist = min(i, multiplier - 1 - i, j, multiplier - 1 - j)
-                y_depth = (global_edge_dist + local_edge_dist / multiplier) * depth_offset
-
-                # Create position for this sub-beam
-                pos = Vector3(
-                    x=base_x + x_off,
-                    y=base_y - y_depth,  # Subtract to come closer to viewer
-                    z=base_z + z_off
-                )
-
-                beams.append((pos, color_linear))
-
-        return beams
-
     def load_and_prepare_image(
             self,
             path: Path,
@@ -576,6 +523,12 @@ class ImageToBlueprint:
         if target_size:
             img = img.resize(target_size, Image.Resampling.LANCZOS)
             print(f"Resized to {target_size[0]}x{target_size[1]}")
+
+        # Upscale by multiplier for condensed rendering
+        if self.condensed_rendering:
+            upscaled_size = (img.width * self.cr_multiplier, img.height * self.cr_multiplier)
+            img = img.resize(upscaled_size, Image.Resampling.LANCZOS)
+            print(f"Upscaled for condensed rendering to {upscaled_size[0]}x{upscaled_size[1]}")
 
         img_array = np.array(img)
 
@@ -633,9 +586,12 @@ class ImageToBlueprint:
 
         print(f"Converting {width}x{height} image ({width * height} pixels)...")
 
+        # Adjust beam spacing for condensed rendering (smaller spacing so beams overlap)
+        effective_beam_spacing = self.beam_spacing / self.cr_multiplier if self.condensed_rendering else self.beam_spacing
+
         # Center the grid - vertical layout uses X-Z plane
-        offset_x = -(width * self.beam_spacing) / 2
-        offset_z = -(height * self.beam_spacing) / 2
+        offset_x = -(width * effective_beam_spacing) / 2
+        offset_z = -(height * effective_beam_spacing) / 2
         base_y = -1000.0  # Constant Y depth for vertical layout
 
         # Generate beams for primary layer
@@ -660,46 +616,26 @@ class ImageToBlueprint:
                 color_linear = self.rgb_to_linear(r, g, b)
 
                 # Calculate base position for this pixel - vertical layout (X-Z plane)
-                base_x = offset_x + (x * self.beam_spacing)
-                base_pos_y = base_y  # Constant Y (depth into the wall)
-                base_pos_z = offset_z + ((height - 1 - y) * self.beam_spacing)
+                base_x = offset_x + (x * effective_beam_spacing)
+                base_pos_z = offset_z + ((height - 1 - y) * effective_beam_spacing)
 
+                # Calculate Y-depth based on distance from edge (for condensed rendering depth layering)
                 if self.condensed_rendering:
-                    # Calculate distance from edge of the entire image
-                    # This determines the Y-depth layering for condensed rendering
-                    global_edge_dist = min(x, width - 1 - x, y, height - 1 - y)
-
-                    # Generate multiple overlapping beams for this pixel
-                    sub_beams = self.generate_overlapping_beams(
-                        color_linear,
-                        base_x,
-                        base_pos_y,
-                        base_pos_z,
-                        self.cr_multiplier,
-                        self.cr_depth_offset,
-                        global_edge_dist
-                    )
-
-                    # Add all sub-beams to the blueprint
-                    for pos, color in sub_beams:
-                        final_pos = primary_layer.get_position(pos.x, pos.y, pos.z)
-                        blueprint.add_object(
-                            ObjectType.BEAM_PAINTED,
-                            final_pos,
-                            rotation,
-                            color
-                        )
-                        object_count += 1
+                    edge_dist = min(x, width - 1 - x, y, height - 1 - y)
+                    y_depth = edge_dist * self.cr_depth_offset
+                    base_pos_y = base_y - y_depth  # Subtract to come closer to viewer
                 else:
-                    # Standard rendering: one beam per pixel
-                    pos = primary_layer.get_position(base_x, base_pos_y, base_pos_z)
-                    blueprint.add_object(
-                        ObjectType.BEAM_PAINTED,
-                        pos,
-                        rotation,
-                        color_linear
-                    )
-                    object_count += 1
+                    base_pos_y = base_y  # Constant Y (depth into the wall)
+
+                # Add beam to blueprint
+                pos = primary_layer.get_position(base_x, base_pos_y, base_pos_z)
+                blueprint.add_object(
+                    ObjectType.BEAM_PAINTED,
+                    pos,
+                    rotation,
+                    color_linear
+                )
+                object_count += 1
 
         if skipped_count > 0:
             print(f"✓ Created {object_count} painted beams ({skipped_count} pixels skipped)")
