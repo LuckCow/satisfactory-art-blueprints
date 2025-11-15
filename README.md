@@ -6,6 +6,7 @@ CLI tools for converting images and 3D models to Satisfactory blueprint JSON fil
 
 - **Image to Blueprint**: Convert any image to pixel art using painted beams with custom RGB colors
 - **3D Model to Blueprint**: Voxelize 3D models (STL, OBJ, PLY, GLTF, etc.) into painted beam structures
+- **Condensed Rendering**: Pack multiple beams per pixel using z-clipping for dramatically increased detail
 - **Flexible Resolution**: Support from 16×16 pixel art to 4K (3840×2160) images
 - **Custom Colors**: Pixel-perfect RGB color matching using linear color space
 - **Background Filtering**: Automatic background removal for cleaner results
@@ -38,6 +39,12 @@ python blueprint_gen.py image.png -s 50%
 
 # Remove background automatically
 python blueprint_gen.py image.png -s 128x128 --filter-bg auto
+
+# Enable condensed rendering for higher detail
+python blueprint_gen.py image.png -s 64x64 --condensed
+
+# Use 3x3 multiplier for 9x more detail
+python blueprint_gen.py image.png -s 64x64 --condensed --cr-multiplier 3
 ```
 
 ### Convert a 3D Model
@@ -99,6 +106,9 @@ python blueprint_gen.py <image> [options]
 | `--max-4k` | Enforce 4K resolution limit | Off |
 | `--filter-bg MODE` | Background filter (auto/corners/brightness) | None |
 | `--bg-tolerance FLOAT` | Background color tolerance (0-255) | 30.0 |
+| `--condensed` | Enable condensed rendering with z-clipping | Off |
+| `--cr-multiplier N` | NxN grid of beams per pixel (condensed mode) | 2 |
+| `--cr-z-offset FLOAT` | Z-offset between layers in cm (condensed mode) | 0.001 |
 
 #### Resolution Formats
 
@@ -126,6 +136,15 @@ python blueprint_gen.py photo.jpg -s 256x256 --filter-bg auto
 
 # Large scene with custom spacing
 python blueprint_gen.py landscape.jpg -s 512x512 --spacing 150
+
+# High-detail condensed rendering (2x2 beams per pixel)
+python blueprint_gen.py portrait.png -s 128x128 --condensed
+
+# Ultra-high detail with 4x4 multiplier (16 beams per pixel)
+python blueprint_gen.py logo.png -s 64x64 --condensed --cr-multiplier 4
+
+# Condensed rendering with custom z-offset
+python blueprint_gen.py artwork.png -s 100x100 --condensed --cr-multiplier 3 --cr-z-offset 0.01
 ```
 
 ### 3D Model Conversion (`voxelize.py`)
@@ -192,6 +211,22 @@ blueprint = converter.convert(
 
 # Save blueprint
 blueprint.save("output.json")
+
+# With condensed rendering for higher detail
+converter_condensed = ImageToBlueprint(
+    beam_spacing=100,
+    condensed_rendering=True,
+    cr_multiplier=3,  # 3x3 grid = 9 beams per pixel
+    cr_z_offset=0.001
+)
+
+blueprint = converter_condensed.convert(
+    "detailed_art.png",
+    name="HighDetailArt",
+    target_size=(128, 128)
+)
+
+blueprint.save("high_detail_output.json")
 ```
 
 ### 3D Model to Blueprint
@@ -272,6 +307,64 @@ Remove unwanted backgrounds from images:
 - `corners`: Averages all four corners
 - `brightness`: Removes very dark/bright pixels
 - Adjustable tolerance (0-255)
+
+## Condensed Rendering
+
+Condensed rendering dramatically increases detail by packing multiple beams into the same pixel space using z-clipping.
+
+### How It Works
+
+Instead of placing one beam per pixel, condensed rendering creates an **NxN grid of sub-beams** with minimal z-offsets to prevent clipping. This allows for:
+
+- **Higher effective resolution** without increasing image dimensions
+- **Smoother color gradients** and finer details
+- **Better representation** of complex artwork
+
+### Usage
+
+```bash
+# Enable with default 2x2 grid (4 beams per pixel)
+python blueprint_gen.py image.png -s 64x64 --condensed
+
+# Use 3x3 grid for 9x more detail
+python blueprint_gen.py image.png -s 64x64 --condensed --cr-multiplier 3
+
+# Adjust z-offset for experimentation
+python blueprint_gen.py image.png -s 64x64 --condensed --cr-z-offset 0.01
+```
+
+### Detail Comparison
+
+| Configuration | Beams per Pixel | Total Beams (64×64) | File Size | Detail Multiplier |
+|--------------|-----------------|---------------------|-----------|-------------------|
+| Standard | 1 | 4,096 | ~17 MB | 1× |
+| `--condensed` (2×2) | 4 | 16,384 | ~67 MB | 4× |
+| `--condensed --cr-multiplier 3` | 9 | 36,864 | ~150 MB | 9× |
+| `--condensed --cr-multiplier 4` | 16 | 65,536 | ~267 MB | 16× |
+| `--condensed --cr-multiplier 5` | 25 | 102,400 | ~417 MB | 25× |
+
+### Parameters
+
+- `--condensed`: Enable condensed rendering mode
+- `--cr-multiplier N`: Create an NxN grid of beams per pixel (default: 2)
+  - Higher values = more detail but larger files
+  - Formula: `total_beams = pixels × (multiplier²)`
+- `--cr-z-offset FLOAT`: Z-offset increment between layers in cm (default: 0.001)
+  - Prevents beam clipping
+  - Smaller values = tighter packing
+
+### When to Use
+
+**Ideal for:**
+- High-detail artwork with fine features
+- Small to medium resolution images (64×64 to 256×256)
+- Logos, portraits, and detailed icons
+- Cases where you want smoothness without upscaling the image
+
+**Consider standard rendering for:**
+- Very large images (>512×512) - file sizes become very large
+- Simple pixel art that doesn't benefit from sub-pixel detail
+- Testing and iteration (faster generation)
 
 ## Technical Details
 
