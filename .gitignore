@@ -1,14 +1,31 @@
-# Python cache
+# Python
 __pycache__/
+*.py[cod]
+*$py.class
 *.pyc
 *.pyo
 *.pyd
-.Python
 *.so
-*.egg
-*.egg-info/
-dist/
+.Python
 build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
 
 # IDE
 .vscode/
@@ -20,3 +37,8 @@ build/
 # OS
 .DS_Store
 Thumbs.db
+
+# Project specific
+*.json
+!CustomSwatchColorBeams.json
+!AIAnchorExample.json

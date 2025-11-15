@@ -27,6 +27,8 @@ Examples:
   %(prog)s image.png --spacing 150          # Increase beam spacing
   %(prog)s image.png --filter-bg auto       # Auto-detect and remove background
   %(prog)s image.png --filter-bg corners --bg-tolerance 50  # Remove corner color
+  %(prog)s image.png --orientation vertical # Vertical orientation (beams rotated 90° in Z)
+  %(prog)s image.png --orientation horizontal  # Horizontal orientation (default)
 
 Background filtering:
   --filter-bg auto:       Use top-left corner color as background
@@ -61,6 +63,8 @@ Resolution limits:
                         help='Filter background: auto (corner color), corners (average corners), brightness (dark/bright)')
     parser.add_argument('--bg-tolerance', type=float, default=30.0,
                         help='Background color tolerance 0-255 (default: 30, lower=stricter)')
+    parser.add_argument('--orientation', type=str, choices=['horizontal', 'vertical'], default='horizontal',
+                        help='Beam orientation: horizontal (default) or vertical (rotated 90° in Z-axis)')
 
     args = parser.parse_args()
 
@@ -144,7 +148,8 @@ Resolution limits:
         target_size=target_size,
         base_z=args.base_z,
         filter_bg=args.filter_bg,
-        bg_tolerance=args.bg_tolerance
+        bg_tolerance=args.bg_tolerance,
+        orientation=args.orientation
     )
 
     # Save blueprint
