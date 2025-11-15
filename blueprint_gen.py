@@ -659,7 +659,7 @@ class ImageToBlueprint:
                 # Calculate base position for this pixel - vertical layout (X-Z plane)
                 base_x = offset_x + (x * self.beam_spacing)
                 base_pos_y = base_y  # Constant Y (depth into the wall)
-                base_pos_z = offset_z + (y * self.beam_spacing)
+                base_pos_z = offset_z + ((height - 1 - y) * self.beam_spacing)
 
                 if self.condensed_rendering:
                     # Generate multiple overlapping beams for this pixel
