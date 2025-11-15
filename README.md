@@ -29,7 +29,7 @@ pip install -r requirements.txt
 
 ```bash
 # full exmaple
-python .\blueprint_gen.py examples\Inserter.webp -s 32x32 --condensed --cr-multiplier 3 --cr-z-offset 0.1
+python .\blueprint_gen.py examples\Inserter.webp -s 32x32 --condensed --cr-multiplier 3 --cr-depth-offset 0.1
 npm run encode .\Inserter.json
 
 # Simple conversion (full resolution)
@@ -108,11 +108,11 @@ python blueprint_gen.py <image> [options]
 | `--spacing FLOAT`      | Beam spacing in cm                             | 100.0           |
 | `--base-z FLOAT`       | Base Z height in cm                            | 1200.0          |
 | `--max-4k`             | Enforce 4K resolution limit                    | Off             |
-| `--filter-bg MODE`     | Background filter (auto/corners/brightness)    | None            |
-| `--bg-tolerance FLOAT` | Background color tolerance (0-255)             | 30.0            |
-| `--condensed`          | Enable condensed rendering with z-clipping     | Off             |
-| `--cr-multiplier N`    | NxN grid of beams per pixel (condensed mode)   | 2               |
-| `--cr-z-offset FLOAT`  | Z-offset between layers in cm (condensed mode) | 0.001           |
+| `--filter-bg MODE`        | Background filter (auto/corners/brightness)       | None            |
+| `--bg-tolerance FLOAT`    | Background color tolerance (0-255)                | 30.0            |
+| `--condensed`             | Enable condensed rendering with depth-clipping    | Off             |
+| `--cr-multiplier N`       | NxN grid of beams per pixel (condensed mode)      | 2               |
+| `--cr-depth-offset FLOAT` | Depth-offset between layers in cm (condensed mode) | 0.001           |
 
 #### Resolution Formats
 
@@ -147,8 +147,8 @@ python blueprint_gen.py portrait.png -s 128x128 --condensed
 # Ultra-high detail with 4x4 multiplier (16 beams per pixel)
 python blueprint_gen.py logo.png -s 64x64 --condensed --cr-multiplier 4
 
-# Condensed rendering with custom z-offset
-python blueprint_gen.py artwork.png -s 100x100 --condensed --cr-multiplier 3 --cr-z-offset 0.01
+# Condensed rendering with custom depth-offset
+python blueprint_gen.py artwork.png -s 100x100 --condensed --cr-multiplier 3 --cr-depth-offset 0.01
 ```
 
 ### 3D Model Conversion (`voxelize.py`)
@@ -221,7 +221,7 @@ converter_condensed = ImageToBlueprint(
     beam_spacing=100,
     condensed_rendering=True,
     cr_multiplier=3,  # 3x3 grid = 9 beams per pixel
-    cr_z_offset=0.001
+    cr_depth_offset=0.001
 )
 
 blueprint = converter_condensed.convert(
@@ -314,11 +314,11 @@ Remove unwanted backgrounds from images:
 
 ## Condensed Rendering
 
-Condensed rendering dramatically increases detail by packing multiple beams into the same pixel space using z-clipping.
+Condensed rendering dramatically increases detail by packing multiple beams into the same pixel space using depth-clipping.
 
 ### How It Works
 
-Instead of placing one beam per pixel, condensed rendering creates an **NxN grid of sub-beams** with minimal z-offsets to prevent clipping. This allows for:
+Instead of placing one beam per pixel, condensed rendering creates an **NxN grid of sub-beams** with minimal depth-offsets to prevent clipping. This allows for:
 
 - **Higher effective resolution** without increasing image dimensions
 - **Smoother color gradients** and finer details
@@ -333,8 +333,8 @@ python blueprint_gen.py image.png -s 64x64 --condensed
 # Use 3x3 grid for 9x more detail
 python blueprint_gen.py image.png -s 64x64 --condensed --cr-multiplier 3
 
-# Adjust z-offset for experimentation
-python blueprint_gen.py image.png -s 64x64 --condensed --cr-z-offset 0.01
+# Adjust depth-offset for experimentation
+python blueprint_gen.py image.png -s 64x64 --condensed --cr-depth-offset 0.01
 ```
 
 ### Detail Comparison
@@ -353,7 +353,7 @@ python blueprint_gen.py image.png -s 64x64 --condensed --cr-z-offset 0.01
 - `--cr-multiplier N`: Create an NxN grid of beams per pixel (default: 2)
   - Higher values = more detail but larger files
   - Formula: `total_beams = pixels × (multiplier²)`
-- `--cr-z-offset FLOAT`: Z-offset increment between layers in cm (default: 0.001)
+- `--cr-depth-offset FLOAT`: Depth-offset increment between layers in cm (default: 0.001)
   - Prevents beam clipping
   - Smaller values = tighter packing
 
