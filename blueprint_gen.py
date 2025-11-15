@@ -382,8 +382,12 @@ class Blueprint:
 class ImageToBlueprint:
     """Convert images to painted beam pixel art"""
 
-    def __init__(self, beam_spacing: float = 100.0):
+    def __init__(self, beam_spacing: float = 100.0, condensed_rendering: bool = False,
+                 cr_multiplier: int = 2, cr_z_offset: float = 0.001):
         self.beam_spacing = beam_spacing
+        self.condensed_rendering = condensed_rendering
+        self.cr_multiplier = cr_multiplier  # Number of sub-beams per pixel (NxN grid)
+        self.cr_z_offset = cr_z_offset  # Z offset increment per layer
 
     def rgb_to_linear(self, r: int, g: int, b: int) -> Tuple[float, float, float]:
         """
@@ -498,6 +502,55 @@ class ImageToBlueprint:
 
         return False
 
+    def generate_overlapping_beams(
+            self,
+            color_linear: Tuple[float, float, float],
+            base_x: float,
+            base_y: float,
+            base_z: float,
+            multiplier: int,
+            z_offset: float
+    ) -> List[Tuple[Vector3, Tuple[float, float, float]]]:
+        """
+        Generate overlapping beams for condensed rendering with z-clipping
+
+        Creates an NxN grid of sub-beams within a single pixel space,
+        with outer corners highest and inner beams progressively lower.
+
+        Args:
+            color_linear: RGB color in linear space (0-1)
+            base_x, base_y, base_z: Base position for this pixel
+            multiplier: Number of sub-beams per axis (NxN grid)
+            z_offset: Z offset increment per layer
+
+        Returns:
+            List of (position, color) tuples for each sub-beam
+        """
+        beams = []
+        sub_spacing = self.beam_spacing / multiplier
+
+        for i in range(multiplier):
+            for j in range(multiplier):
+                # Calculate position offset within the pixel
+                x_off = (i - (multiplier - 1) / 2.0) * sub_spacing
+                y_off = (j - (multiplier - 1) / 2.0) * sub_spacing
+
+                # Calculate Z depth based on distance from edges
+                # Outer corners (edge_dist=0) are highest, inner beams go progressively lower
+                edge_dist = min(i, multiplier - 1 - i, j, multiplier - 1 - j)
+                z_depth = edge_dist * z_offset
+
+                # Create position for this sub-beam
+                pos = Vector3(
+                    x=base_x + x_off,
+                    y=base_y + y_off,
+                    z=base_z - z_depth  # Subtract to go down (lower z = lower height)
+                )
+
+                beams.append((pos, color_linear))
+
+        return beams
+
     def load_and_prepare_image(
             self,
             path: Path,
@@ -601,22 +654,42 @@ class ImageToBlueprint:
                 # Convert RGB to linear color space (0-1 range with gamma correction)
                 color_linear = self.rgb_to_linear(r, g, b)
 
-                # Calculate position
-                base_pos = Vector3(
-                    x=offset_x + (x * self.beam_spacing),
-                    y=offset_y + (y * self.beam_spacing),
-                    z=base_z
-                )
+                # Calculate base position for this pixel
+                base_x = offset_x + (x * self.beam_spacing)
+                base_y = offset_y + (y * self.beam_spacing)
+                base_pos_z = base_z
 
-                pos = primary_layer.get_position(base_pos.x, base_pos.y, base_pos.z)
+                if self.condensed_rendering:
+                    # Generate multiple overlapping beams for this pixel
+                    sub_beams = self.generate_overlapping_beams(
+                        color_linear,
+                        base_x,
+                        base_y,
+                        base_pos_z,
+                        self.cr_multiplier,
+                        self.cr_z_offset
+                    )
 
-                blueprint.add_object(
-                    ObjectType.BEAM_PAINTED,
-                    pos,
-                    rotation,
-                    color_linear
-                )
-                object_count += 1
+                    # Add all sub-beams to the blueprint
+                    for pos, color in sub_beams:
+                        final_pos = primary_layer.get_position(pos.x, pos.y, pos.z)
+                        blueprint.add_object(
+                            ObjectType.BEAM_PAINTED,
+                            final_pos,
+                            rotation,
+                            color
+                        )
+                        object_count += 1
+                else:
+                    # Standard rendering: one beam per pixel
+                    pos = primary_layer.get_position(base_x, base_y, base_pos_z)
+                    blueprint.add_object(
+                        ObjectType.BEAM_PAINTED,
+                        pos,
+                        rotation,
+                        color_linear
+                    )
+                    object_count += 1
 
         if skipped_count > 0:
             print(f"✓ Created {object_count} painted beams ({skipped_count} pixels skipped)")
@@ -697,6 +770,19 @@ Examples:
   %(prog)s image.png --filter-bg corners --bg-tolerance 50  # Remove corner color
   %(prog)s image.png --orientation vertical # Vertical orientation (beams rotated 90° in Z)
   %(prog)s image.png --orientation horizontal  # Horizontal orientation (default)
+  %(prog)s image.png --condensed            # Enable condensed rendering (2x2 beams per pixel)
+  %(prog)s image.png --condensed --cr-multiplier 3  # 3x3 beams per pixel (9x detail)
+  %(prog)s image.png --condensed --cr-z-offset 0.01 # Larger z-offset for experimentation
+
+Condensed rendering:
+  --condensed:        Enable condensed rendering mode with z-clipping
+  --cr-multiplier N:  Number of beams per pixel axis (NxN grid, default: 2)
+  --cr-z-offset:      Z-height offset between beam layers in cm (default: 0.001)
+
+  Condensed rendering packs multiple beams in the same pixel space using tiny
+  z-offsets to clip them together. Outer corners are highest, inner beams are
+  progressively lower. This allows higher detail in the same blueprint area.
+  Example: 64x64 image with --cr-multiplier 2 creates 16,384 beams (4 per pixel).
 
 Background filtering:
   --filter-bg auto:       Use top-left corner color as background
@@ -735,6 +821,12 @@ Resolution limits:
                         help='Use horizontal beam orientation (default: vertical)')
     parser.add_argument('--orientation', type=str, choices=['horizontal', 'vertical'], default='horizontal',
                         help='Beam orientation: horizontal (default) or vertical (rotated 90° in Z-axis)')
+    parser.add_argument('--condensed', action='store_true',
+                        help='Enable condensed rendering: pack multiple beams per pixel using z-clipping for higher detail')
+    parser.add_argument('--cr-multiplier', type=int, default=2, metavar='N',
+                        help='Condensed rendering: NxN grid of sub-beams per pixel (default: 2, i.e., 2x2=4 beams per pixel)')
+    parser.add_argument('--cr-z-offset', type=float, default=0.001, metavar='OFFSET',
+                        help='Condensed rendering: Z offset increment between layers in cm (default: 0.001)')
 
     args = parser.parse_args()
 
@@ -811,7 +903,14 @@ Resolution limits:
 
     # Convert image to blueprint
     print(f"\n🔧 Converting image to painted beam blueprint...")
-    converter = ImageToBlueprint(beam_spacing=args.spacing)
+    if args.condensed:
+        print(f"   Condensed rendering enabled: {args.cr_multiplier}x{args.cr_multiplier} beams per pixel (z-offset: {args.cr_z_offset} cm)")
+    converter = ImageToBlueprint(
+        beam_spacing=args.spacing,
+        condensed_rendering=args.condensed,
+        cr_multiplier=args.cr_multiplier,
+        cr_z_offset=args.cr_z_offset
+    )
 
     # Determine rotation based on horizontal flag
     beam_rotation = Rotation.HORIZONTAL_0 if args.horizontal else Rotation.VERTICAL
