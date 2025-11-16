@@ -7,6 +7,7 @@ Converts 3D models to Satisfactory blueprints using painted beams as voxels
 import argparse
 from pathlib import Path
 from lib.model_voxelizer import ModelVoxelizer
+from lib.blueprint import Rotation
 
 
 def main():
@@ -15,23 +16,22 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  %(prog)s model.stl                        # Convert with default settings (100cm voxels)
-  %(prog)s model.obj -s 50                  # Use 50cm voxels (higher detail)
-  %(prog)s model.stl -s 200                 # Use 200cm voxels (lower detail)
+  %(prog)s model.stl                        # Convert with default settings (1m voxels)
+  %(prog)s model.obj -s 50                  # Scale max dimension to 50m
+  %(prog)s model.stl -s 100                 # Scale max dimension to 100m
   %(prog)s model.glb -o art.json -n "Art"   # Custom output and name
-  %(prog)s model.ply --max-size 5000        # Limit model to 50m
   %(prog)s model.stl --color 1 0.5 0        # Use orange color (RGB 0-1)
 
 Supported formats:
   STL, OBJ, PLY, GLTF/GLB, FBX, DAE (Collada), 3DS, and more
 
-Voxel sizes:
-  - 50cm: High detail (more beams)
-  - 100cm: Default (1m voxels)
-  - 200cm: Low detail (fewer beams)
+Scaling:
+  Each voxel is a 1m cube (painted beam)
+  -s parameter sets the maximum dimension in meters
+  Model is scaled proportionally to fit within this size
+  Example: -s 50 scales a 500x400x300 model to 50x40x30m
 
 Tips:
-  - Start with larger voxel sizes (200cm) for testing
   - Models are centered at origin automatically
   - Surface voxelization creates hollow structures (efficient)
   - Vertex colors are sampled if available in the model
@@ -41,10 +41,8 @@ Tips:
     parser.add_argument('model', type=Path, help='Input 3D model file')
     parser.add_argument('-o', '--output', type=Path, help='Output JSON file (default: <model>.json)')
     parser.add_argument('-n', '--name', help='Blueprint name (default: model filename)')
-    parser.add_argument('-s', '--voxel-size', type=float, default=100.0,
-                        help='Voxel size in cm (default: 100)')
-    parser.add_argument('--max-size', type=float, default=10000.0,
-                        help='Maximum model dimension in cm (default: 10000 = 100m)')
+    parser.add_argument('-s', '--size', type=float, default=100.0,
+                        help='Maximum model dimension in meters (default: 100m). Model is scaled proportionally.')
     parser.add_argument('--color', type=float, nargs=3, metavar=('R', 'G', 'B'),
                         help='Default RGB color in 0-1 range (e.g., 1 0.5 0 for orange)')
     parser.add_argument('--no-vertex-colors', action='store_true',
@@ -78,7 +76,8 @@ Tips:
 
     try:
         # Convert model to blueprint
-        voxelizer = ModelVoxelizer(voxel_size=args.voxel_size)
+        # Each voxel is 1m (100cm internally for Satisfactory units)
+        voxelizer = ModelVoxelizer(voxel_size=1.0)
 
         # Determine rotation based on horizontal flag
         beam_rotation = Rotation.HORIZONTAL_0 if args.horizontal else Rotation.VERTICAL
@@ -86,7 +85,7 @@ Tips:
         blueprint = voxelizer.convert(
             args.model,
             name=args.name,
-            max_dimension=args.max_size,
+            max_dimension=args.size,
             default_color=default_color,
             use_vertex_colors=not args.no_vertex_colors,
             rotation=beam_rotation
@@ -105,7 +104,8 @@ Tips:
         print(f"   Input:      {args.model}")
         print(f"   Output:     {output_path}")
         print(f"   Voxels:     {len(blueprint.objects):,} beams")
-        print(f"   Voxel size: {args.voxel_size} cm")
+        print(f"   Voxel size: 1.0m (each beam is a 1m cube)")
+        print(f"   Max size:   {args.size}m")
         print(f"   File size:  {file_size_mb:.2f} MB")
         print("=" * 60)
         print()
