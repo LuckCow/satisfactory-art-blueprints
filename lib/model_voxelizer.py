@@ -15,14 +15,13 @@ from .blueprint import Blueprint, ObjectType, Rotation, Vector3
 class ModelVoxelizer:
     """Convert 3D models to voxelized painted beam blueprints"""
 
-    def __init__(self, voxel_size: float = 1.0):
+    def __init__(self):
         """
         Initialize voxelizer
 
-        Args:
-            voxel_size: Size of each voxel in meters (default: 1.0m)
+        Voxel size is calculated dynamically based on model dimensions and target scale.
         """
-        self.voxel_size = voxel_size
+        pass
 
     def surface_voxelize(self, mesh: trimesh.Trimesh, voxel_size: float) -> np.ndarray:
         """
@@ -95,17 +94,17 @@ class ModelVoxelizer:
     def load_and_prepare_mesh(
             self,
             model_path: Path,
-            max_dimension: float = 100.0
-    ) -> trimesh.Trimesh:
+            target_scale: float = 100.0
+    ) -> Tuple[trimesh.Trimesh, float]:
         """
         Load 3D model and prepare for voxelization.
 
         Args:
             model_path: Path to 3D model file
-            max_dimension: Maximum size in meters (default: 100m)
+            target_scale: Target number of voxels in largest dimension (default: 100)
 
         Returns:
-            Prepared trimesh object
+            Tuple of (prepared trimesh object, calculated voxel size)
         """
         print(f"Loading model: {model_path}")
         mesh = trimesh.load(model_path, force='mesh')
@@ -125,28 +124,28 @@ class ModelVoxelizer:
 
         print(f"  Original size: {current_size[0]:.1f} x {current_size[1]:.1f} x {current_size[2]:.1f} units")
 
-        # Scale to fit within max_dimension
-        if current_max > max_dimension:
-            scale_factor = max_dimension / current_max
-            mesh.apply_scale(scale_factor)
-            new_size = mesh.bounds[1] - mesh.bounds[0]
-            print(
-                f"  Scaled to: {new_size[0]:.1f} x {new_size[1]:.1f} x {new_size[2]:.1f}m (factor: {scale_factor:.3f})")
-        else:
-            print(f"  Size in meters: {current_size[0]:.1f} x {current_size[1]:.1f} x {current_size[2]:.1f}m")
+        # Calculate voxel size based on target scale
+        # Voxel size = (largest dimension) / (target number of voxels)
+        voxel_size = current_max / target_scale
+
+        # Calculate expected voxel dimensions
+        voxel_dims = current_size / voxel_size
+        print(f"  Target scale: {target_scale} voxels in largest dimension")
+        print(f"  Calculated voxel size: {voxel_size:.3f} units")
+        print(f"  Expected voxel dimensions: {voxel_dims[0]:.1f} x {voxel_dims[1]:.1f} x {voxel_dims[2]:.1f} voxels")
 
         # Calculate mesh statistics
         print(f"  Vertices: {len(mesh.vertices):,}")
         print(f"  Faces: {len(mesh.faces):,}")
-        print(f"  Surface area: {mesh.area:.1f}m²")
+        print(f"  Surface area: {mesh.area:.1f} square units")
 
-        return mesh
+        return mesh, voxel_size
 
     def convert(
             self,
             model_path: Path,
             name: Optional[str] = None,
-            max_dimension: float = 100.0,
+            target_scale: float = 100.0,
             default_color: Optional[Tuple[float, float, float]] = None,
             use_vertex_colors: bool = True,
             rotation: Rotation = Rotation.VERTICAL
@@ -157,7 +156,7 @@ class ModelVoxelizer:
         Args:
             model_path: Path to 3D model file
             name: Blueprint name (defaults to filename)
-            max_dimension: Maximum model size in meters
+            target_scale: Target number of voxels in largest dimension
             default_color: Default RGB color (0-1) if no vertex colors
             use_vertex_colors: Whether to sample colors from mesh
             rotation: Beam rotation (default: VERTICAL)
@@ -165,12 +164,12 @@ class ModelVoxelizer:
         Returns:
             Blueprint object
         """
-        # Load and prepare mesh
-        mesh = self.load_and_prepare_mesh(model_path, max_dimension)
+        # Load and prepare mesh, calculate voxel size
+        mesh, voxel_size = self.load_and_prepare_mesh(model_path, target_scale)
 
         # Voxelize surface
-        print(f"\nVoxelizing with {self.voxel_size}m voxels...")
-        voxel_positions = self.surface_voxelize(mesh, self.voxel_size)
+        print(f"\nVoxelizing with voxel size {voxel_size:.3f} units...")
+        voxel_positions = self.surface_voxelize(mesh, voxel_size)
 
         print(f"✓ Generated {len(voxel_positions):,} voxels")
 

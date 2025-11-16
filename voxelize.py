@@ -16,9 +16,9 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  %(prog)s model.stl                        # Convert with default settings (1m voxels)
-  %(prog)s model.obj -s 50                  # Scale max dimension to 50m
-  %(prog)s model.stl -s 100                 # Scale max dimension to 100m
+  %(prog)s model.stl                        # Convert with default settings (100 voxels max)
+  %(prog)s model.obj -s 50                  # Target 50 voxels in largest dimension
+  %(prog)s model.stl -s 100                 # Target 100 voxels in largest dimension
   %(prog)s model.glb -o art.json -n "Art"   # Custom output and name
   %(prog)s model.stl --color 1 0.5 0        # Use orange color (RGB 0-1)
 
@@ -26,10 +26,12 @@ Supported formats:
   STL, OBJ, PLY, GLTF/GLB, FBX, DAE (Collada), 3DS, and more
 
 Scaling:
-  Each voxel is a 1m cube (painted beam)
-  -s parameter sets the maximum dimension in meters
-  Model is scaled proportionally to fit within this size
-  Example: -s 50 scales a 500x400x300 model to 50x40x30m
+  Each voxel is a painted beam (1m cube in Satisfactory)
+  -s parameter sets the target number of voxels in the largest dimension
+  Voxel size is calculated as: (model max dimension) / (target scale)
+  Example: -s 50 creates ~50 voxels in the largest dimension
+           A model with dimensions 500x400x300 units would use 10-unit voxels
+           Resulting in approximately 50x40x30 voxels
 
 Tips:
   - Models are centered at origin automatically
@@ -41,8 +43,8 @@ Tips:
     parser.add_argument('model', type=Path, help='Input 3D model file')
     parser.add_argument('-o', '--output', type=Path, help='Output JSON file (default: <model>.json)')
     parser.add_argument('-n', '--name', help='Blueprint name (default: model filename)')
-    parser.add_argument('-s', '--size', type=float, default=100.0,
-                        help='Maximum model dimension in meters (default: 100m). Model is scaled proportionally.')
+    parser.add_argument('-s', '--scale', type=float, default=100.0,
+                        help='Target number of voxels in largest dimension (default: 100). Voxel size is calculated automatically.')
     parser.add_argument('--color', type=float, nargs=3, metavar=('R', 'G', 'B'),
                         help='Default RGB color in 0-1 range (e.g., 1 0.5 0 for orange)')
     parser.add_argument('--no-vertex-colors', action='store_true',
@@ -76,8 +78,8 @@ Tips:
 
     try:
         # Convert model to blueprint
-        # Each voxel is 1m (100cm internally for Satisfactory units)
-        voxelizer = ModelVoxelizer(voxel_size=1.0)
+        # Voxel size is calculated automatically based on target scale
+        voxelizer = ModelVoxelizer()
 
         # Determine rotation based on horizontal flag
         beam_rotation = Rotation.HORIZONTAL_0 if args.horizontal else Rotation.VERTICAL
@@ -85,7 +87,7 @@ Tips:
         blueprint = voxelizer.convert(
             args.model,
             name=args.name,
-            max_dimension=args.size,
+            target_scale=args.scale,
             default_color=default_color,
             use_vertex_colors=not args.no_vertex_colors,
             rotation=beam_rotation
@@ -101,12 +103,11 @@ Tips:
         print("=" * 60)
         print("📊 Summary:")
         print("=" * 60)
-        print(f"   Input:      {args.model}")
-        print(f"   Output:     {output_path}")
-        print(f"   Voxels:     {len(blueprint.objects):,} beams")
-        print(f"   Voxel size: 1.0m (each beam is a 1m cube)")
-        print(f"   Max size:   {args.size}m")
-        print(f"   File size:  {file_size_mb:.2f} MB")
+        print(f"   Input:        {args.model}")
+        print(f"   Output:       {output_path}")
+        print(f"   Voxels:       {len(blueprint.objects):,} beams")
+        print(f"   Target scale: {args.scale} voxels in largest dimension")
+        print(f"   File size:    {file_size_mb:.2f} MB")
         print("=" * 60)
         print()
         print("✓ Done! Import the JSON file using the blueprint encoding script.")
