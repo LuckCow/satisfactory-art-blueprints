@@ -187,6 +187,10 @@ class ModelVoxelizer:
         print(f"\nCreating blueprint objects...")
 
         # Add voxels as painted beams
+        # Scale factor to convert from meters to centimeters (Satisfactory coordinate system)
+        # Painted beams are 100cm (1m) cubes in Satisfactory
+        scale_to_cm = 100.0
+
         for i, pos in enumerate(voxel_positions):
             # Get color for this voxel
             if colors is not None:
@@ -196,10 +200,15 @@ class ModelVoxelizer:
             else:
                 color = None
 
-            # Create beam at voxel position
+            # Create beam at voxel position (scaled to centimeters for Satisfactory)
+            # Following the same coordinate system as blueprint_gen.py which uses 100cm spacing
             blueprint.add_object(
                 ObjectType.BEAM_PAINTED,
-                Vector3(float(pos[0]), float(pos[1]), float(pos[2])),
+                Vector3(
+                    float(pos[0]) * scale_to_cm,
+                    float(pos[1]) * scale_to_cm,
+                    float(pos[2]) * scale_to_cm
+                ),
                 rotation,
                 color
             )
