@@ -15,12 +15,12 @@ from .blueprint import Blueprint, ObjectType, Rotation, Vector3
 class ModelVoxelizer:
     """Convert 3D models to voxelized painted beam blueprints"""
 
-    def __init__(self, voxel_size: float = 100.0):
+    def __init__(self, voxel_size: float = 1.0):
         """
         Initialize voxelizer
 
         Args:
-            voxel_size: Size of each voxel in cm (default: 100cm = 1m)
+            voxel_size: Size of each voxel in meters (default: 1.0m)
         """
         self.voxel_size = voxel_size
 
@@ -95,14 +95,14 @@ class ModelVoxelizer:
     def load_and_prepare_mesh(
             self,
             model_path: Path,
-            max_dimension: float = 10000.0
+            max_dimension: float = 100.0
     ) -> trimesh.Trimesh:
         """
         Load 3D model and prepare for voxelization.
 
         Args:
             model_path: Path to 3D model file
-            max_dimension: Maximum size in cm (default: 100m)
+            max_dimension: Maximum size in meters (default: 100m)
 
         Returns:
             Prepared trimesh object
@@ -131,14 +131,14 @@ class ModelVoxelizer:
             mesh.apply_scale(scale_factor)
             new_size = mesh.bounds[1] - mesh.bounds[0]
             print(
-                f"  Scaled to: {new_size[0]:.1f} x {new_size[1]:.1f} x {new_size[2]:.1f} cm (factor: {scale_factor:.3f})")
+                f"  Scaled to: {new_size[0]:.1f} x {new_size[1]:.1f} x {new_size[2]:.1f}m (factor: {scale_factor:.3f})")
         else:
-            print(f"  Size in cm: {current_size[0]:.1f} x {current_size[1]:.1f} x {current_size[2]:.1f}")
+            print(f"  Size in meters: {current_size[0]:.1f} x {current_size[1]:.1f} x {current_size[2]:.1f}m")
 
         # Calculate mesh statistics
         print(f"  Vertices: {len(mesh.vertices):,}")
         print(f"  Faces: {len(mesh.faces):,}")
-        print(f"  Surface area: {mesh.area:.1f} cm²")
+        print(f"  Surface area: {mesh.area:.1f}m²")
 
         return mesh
 
@@ -146,9 +146,10 @@ class ModelVoxelizer:
             self,
             model_path: Path,
             name: Optional[str] = None,
-            max_dimension: float = 10000.0,
+            max_dimension: float = 100.0,
             default_color: Optional[Tuple[float, float, float]] = None,
-            use_vertex_colors: bool = True
+            use_vertex_colors: bool = True,
+            rotation: Rotation = Rotation.VERTICAL
     ) -> Blueprint:
         """
         Convert 3D model to voxelized blueprint.
@@ -156,9 +157,10 @@ class ModelVoxelizer:
         Args:
             model_path: Path to 3D model file
             name: Blueprint name (defaults to filename)
-            max_dimension: Maximum model size in cm
+            max_dimension: Maximum model size in meters
             default_color: Default RGB color (0-1) if no vertex colors
             use_vertex_colors: Whether to sample colors from mesh
+            rotation: Beam rotation (default: VERTICAL)
 
         Returns:
             Blueprint object
@@ -167,7 +169,7 @@ class ModelVoxelizer:
         mesh = self.load_and_prepare_mesh(model_path, max_dimension)
 
         # Voxelize surface
-        print(f"\nVoxelizing with {self.voxel_size}cm voxels...")
+        print(f"\nVoxelizing with {self.voxel_size}m voxels...")
         voxel_positions = self.surface_voxelize(mesh, self.voxel_size)
 
         print(f"✓ Generated {len(voxel_positions):,} voxels")
@@ -199,7 +201,7 @@ class ModelVoxelizer:
             blueprint.add_object(
                 ObjectType.BEAM_PAINTED,
                 Vector3(float(pos[0]), float(pos[1]), float(pos[2])),
-                Rotation.VERTICAL,
+                rotation,
                 color
             )
 
