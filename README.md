@@ -57,14 +57,14 @@ python blueprint_gen.py image.png -s 64x64 --condensed --cr-multiplier 3
 ### Convert a 3D Model
 
 ```bash
-# Convert with default settings (100cm voxels)
+# Convert with default settings (100 voxels in largest dimension)
 python voxelize.py model.stl
 
-# Higher detail (50cm voxels)
-python voxelize.py model.obj -s 50
+# Higher detail (200 voxels in largest dimension)
+python voxelize.py model.obj -s 200
 
-# Lower detail (200cm voxels)
-python voxelize.py model.stl -s 200
+# Lower detail (50 voxels in largest dimension)
+python voxelize.py model.stl -s 50
 
 # Custom color
 python voxelize.py model.glb --color 1 0.5 0
@@ -166,14 +166,14 @@ python voxelize.py <model> [options]
 
 #### Options
 
-| Option                   | Description                   | Default        |
-| ------------------------ | ----------------------------- | -------------- |
-| `-s, --voxel-size FLOAT` | Voxel size in cm              | 100.0          |
-| `-o, --output FILE`      | Output JSON file              | `<model>.json` |
-| `-n, --name NAME`        | Blueprint name                | Model filename |
-| `--max-size FLOAT`       | Max model dimension in cm     | 10000.0 (100m) |
-| `--color R G B`          | Default RGB color (0-1 range) | None           |
-| `--no-vertex-colors`     | Ignore vertex colors          | Off            |
+| Option                 | Description                                  | Default        |
+| ---------------------- | -------------------------------------------- | -------------- |
+| `-s, --scale FLOAT`    | Target voxels in largest dimension           | 100.0          |
+| `-o, --output FILE`    | Output JSON file                             | `<model>.json` |
+| `-n, --name NAME`      | Blueprint name                               | Model filename |
+| `--color R G B`        | Default RGB color (0-1 range)                | None           |
+| `--no-vertex-colors`   | Ignore vertex colors                         | Off            |
+| `-H, --horizontal`     | Use horizontal beam orientation              | Off            |
 
 #### Supported Formats
 
@@ -182,17 +182,17 @@ STL, OBJ, PLY, GLTF/GLB, FBX, DAE (Collada), 3DS, and more.
 #### Examples
 
 ```bash
-# Default conversion
+# Default conversion (100 voxels in largest dimension)
 python voxelize.py model.stl
 
-# High detail
-python voxelize.py model.obj -s 50
+# High detail (200 voxels in largest dimension)
+python voxelize.py model.obj -s 200
 
-# Low detail with custom color
-python voxelize.py model.stl -s 200 --color 1 0.5 0
+# Low detail with custom color (50 voxels)
+python voxelize.py model.stl -s 50 --color 1 0.5 0
 
-# Limit model size
-python voxelize.py huge_model.glb --max-size 5000
+# Horizontal beam orientation
+python voxelize.py model.glb -s 100 --horizontal
 ```
 
 ## Library Usage
@@ -242,13 +242,13 @@ blueprint.save("high_detail_output.json")
 from lib import ModelVoxelizer
 
 # Create voxelizer
-voxelizer = ModelVoxelizer(voxel_size=100.0)
+voxelizer = ModelVoxelizer()
 
-# Convert model
+# Convert model (100 voxels in largest dimension)
 blueprint = voxelizer.convert(
     "model.stl",
     name="My3DArt",
-    max_dimension=10000.0,
+    target_scale=100.0,  # Target number of voxels in largest dimension
     default_color=(1.0, 0.5, 0.0)  # Orange
 )
 
@@ -289,11 +289,14 @@ blueprint.save("custom.json")
 
 ### 3D Model Voxelization
 
-| Voxel Size      | Detail Level | Use Case                  |
-| --------------- | ------------ | ------------------------- |
-| 50cm            | High         | Small detailed models     |
-| 100cm (default) | Medium       | General purpose           |
-| 200cm           | Low          | Large structures, testing |
+| Target Scale | Detail Level | Use Case                            | Approximate Voxels |
+| ------------ | ------------ | ----------------------------------- | ------------------ |
+| 200+         | Very High    | Small detailed models               | 8K-64K+            |
+| 100 (default)| High         | General purpose, medium detail      | 1K-10K             |
+| 50           | Medium       | Quick previews, larger structures   | 125-1K             |
+| 25           | Low          | Very large structures, testing      | 16-125             |
+
+Note: Voxel size is calculated automatically as (model max dimension) / (target scale)
 
 ## Color System
 
@@ -405,11 +408,11 @@ Output files are JSON blueprints compatible with:
 
 ## Tips & Best Practices
 
-1. **Start Small**: Test with 64×64 before scaling up
+1. **Start Small**: Test with 64×64 before scaling up (images) or 25-50 voxels (3D models)
 2. **Use Percentages**: Quick way to downsample large images (`-s 50%`)
 3. **Background Removal**: Use `--filter-bg auto` for images with solid backgrounds
 4. **File Sizes**: Large blueprints (>1GB) may be slow to load in-game
-5. **3D Models**: Start with 200cm voxels for testing, then refine
+5. **3D Models**: Start with 50 voxels for testing, then increase to 100-200 for final result
 6. **Memory**: 4K conversions require 16GB+ RAM
 
 ## Requirements
