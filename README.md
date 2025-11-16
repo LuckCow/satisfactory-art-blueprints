@@ -1,6 +1,9 @@
 # Satisfactory Art Blueprints
 
 CLI tools for converting images and 3D models to Satisfactory blueprint JSON files using painted beams.
+The json blueprint can be converted into usable .sbp/.sbpcfg files with @etothepii/satisfactory-file-parser
+Note that the entity limit for the number of beams in a blueprint before it will crash is around 10k, atleast on my computer
+![alt text](docs/pokemon_demo.png)
 
 ## Features
 
@@ -100,18 +103,18 @@ python blueprint_gen.py <image> [options]
 
 #### Options
 
-| Option                 | Description                                    | Default         |
-| ---------------------- | ---------------------------------------------- | --------------- |
-| `-s, --size SIZE`      | Target resolution (WxH, "W H", or %)           | Full resolution |
-| `-o, --output FILE`    | Output JSON file                               | `<image>.json`  |
-| `-n, --name NAME`      | Blueprint name                                 | Image filename  |
-| `--spacing FLOAT`      | Beam spacing in cm                             | 100.0           |
-| `--base-z FLOAT`       | Base Z height in cm                            | 1200.0          |
-| `--max-4k`             | Enforce 4K resolution limit                    | Off             |
-| `--filter-bg MODE`        | Background filter (auto/corners/brightness)       | None            |
-| `--bg-tolerance FLOAT`    | Background color tolerance (0-255)                | 30.0            |
-| `--condensed`             | Enable condensed rendering with depth-clipping    | Off             |
-| `--cr-multiplier N`       | NxN grid of beams per pixel (condensed mode)      | 2               |
+| Option                    | Description                                        | Default         |
+| ------------------------- | -------------------------------------------------- | --------------- |
+| `-s, --size SIZE`         | Target resolution (WxH, "W H", or %)               | Full resolution |
+| `-o, --output FILE`       | Output JSON file                                   | `<image>.json`  |
+| `-n, --name NAME`         | Blueprint name                                     | Image filename  |
+| `--spacing FLOAT`         | Beam spacing in cm                                 | 100.0           |
+| `--base-z FLOAT`          | Base Z height in cm                                | 1200.0          |
+| `--max-4k`                | Enforce 4K resolution limit                        | Off             |
+| `--filter-bg MODE`        | Background filter (auto/corners/brightness)        | None            |
+| `--bg-tolerance FLOAT`    | Background color tolerance (0-255)                 | 30.0            |
+| `--condensed`             | Enable condensed rendering with depth-clipping     | Off             |
+| `--cr-multiplier N`       | NxN grid of beams per pixel (condensed mode)       | 2               |
 | `--cr-depth-offset FLOAT` | Depth-offset between layers in cm (condensed mode) | 0.001           |
 
 #### Resolution Formats
