@@ -280,17 +280,13 @@ class BlueprintObject:
 
 
 class Blueprint:
-    """Multi-layer blueprint with dimensional manifold support"""
+    """Container for blueprint data"""
 
-    def __init__(self, name: str = "Blueprint"):
+    def __init__(self, name: str = "Generated Blueprint"):
         self.name = name
         self.objects: List[BlueprintObject] = []
-        self.layers: List[Layer] = []
-        self.next_id = 2147483647  # Start from max int32
-
-        # Default beam configuration
-        self.beam_spacing = 100.0  # 100cm between beams (tight grid)
-        self.default_rotation = Rotation.VERTICAL
+        self.layers: List[Layer] = [Layer("Primary", z_offset=0, density=1.0)]
+        self._object_counter = 0
 
     def add_layer(self, layer: Layer):
         """Add a dimensional layer"""
@@ -300,77 +296,44 @@ class Blueprint:
             self,
             object_type: ObjectType,
             position: Vector3,
-            rotation: Optional[Rotation] = None,
+            rotation: Rotation,
             color_rgb: Optional[Tuple[float, float, float]] = None
-    ) -> BlueprintObject:
-        """Add an object to the blueprint with optional RGB color (0-1 range)"""
-        rot = Quaternion.from_rotation(rotation or self.default_rotation)
-        obj = BlueprintObject(object_type, position, rot, color_rgb, self.next_id)
-        self.objects.append(obj)
-        self.next_id -= 1
-        return obj
-
-    def calculate_dimensions(self) -> Vector3:
-        """Calculate blueprint dimensions"""
-        if not self.objects:
-            return Vector3(1, 1, 1)
-
-        positions = [obj.position for obj in self.objects]
-        max_x = max(abs(p.x) for p in positions)
-        max_y = max(abs(p.y) for p in positions)
-        max_z = max(abs(p.z) for p in positions)
-
-        return Vector3(
-            int(max_x / 100) + 2,
-            int(max_y / 100) + 2,
-            int(max_z / 100) + 2
+    ):
+        """Add an object to the blueprint"""
+        obj = BlueprintObject(
+            object_type=object_type,
+            position=position,
+            rotation=Quaternion.from_rotation(rotation),
+            color_rgb=color_rgb,
+            instance_id=self._object_counter
         )
-
-    def get_unique_recipes(self) -> List[Dict]:
-        """Get list of unique recipes used"""
-        recipes = set()
-        for obj in self.objects:
-            recipes.add(obj.object_type.recipe_path)
-
-        return [
-            {"levelName": "", "pathName": recipe}
-            for recipe in sorted(recipes)
-        ]
+        self.objects.append(obj)
+        self._object_counter += 1
 
     def to_dict(self) -> Dict:
-        """Convert to JSON-serializable dictionary"""
-        dimensions = self.calculate_dimensions()
-
+        """Convert to blueprint JSON format"""
         return {
-            "name": self.name,
-            "compressionInfo": {
-                "chunkHeaderVersion": 572662306,
-                "packageFileTag": 2653586369,
-                "maxUncompressedChunkContentSize": 131072,
-                "compressionAlgorithm": 3
-            },
             "header": {
-                "headerVersion": 2,
-                "saveVersion": 52,
-                "buildVersion": 455399,
-                "designerDimension": dimensions.to_dict(),
-                "recipeReferences": self.get_unique_recipes(),
-                "itemCosts": []  # Could be calculated if needed
-            },
-            "config": {
-                "configVersion": 4,
-                "description": "Generated pixel art from image",
-                "color": {"r": 0.28755027055740356, "g": 0.10702301561832428, "b": 0.5583410263061523, "a": 1},
-                "iconID": 393,
-                "referencedIconLibrary": "/Game/FactoryGame/-Shared/Blueprint/IconLibrary",
-                "iconLibraryType": "IconLibrary",
-                "lastEditedBy": []
+                "saveHeaderVersion": 13,
+                "saveVersion": 46,
+                "buildVersion": 365306,
+                "mapName": "Persistent_Level",
+                "mapOptions": "",
+                "sessionName": self.name,
+                "playDurationSeconds": 0,
+                "saveDateTime": 0,
+                "sessionVisibility": 0,
+                "editorObjectVersion": 0,
+                "modMetadata": "",
+                "isModdedSave": False,
+                "saveIdentifier": ""
             },
             "objects": [obj.to_dict() for obj in self.objects]
         }
 
-    def save(self, filepath: Path):
+    def save(self, path: Path):
         """Save blueprint to JSON file"""
-        with open(filepath, 'w') as f:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, 'w') as f:
             json.dump(self.to_dict(), f, indent=2)
-        print(f"✓ Blueprint saved: {filepath} ({len(self.objects)} objects)")
+        print(f"✓ Saved blueprint: {path}")
